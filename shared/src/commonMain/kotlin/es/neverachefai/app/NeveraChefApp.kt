@@ -7,14 +7,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import es.neverachefai.core.preferences.AppPreferences
 import es.neverachefai.core.ui.components.NeveraMainScaffold
-import es.neverachefai.feature.home.ui.HomeScreen
 import es.neverachefai.feature.navigation.MainTab
 import es.neverachefai.feature.navigation.PantryFlow
 import es.neverachefai.feature.navigation.RecipesFlow
 import es.neverachefai.feature.navigation.RootFlow
 import es.neverachefai.feature.onboarding.ui.InitialPreferencesScreen
 import es.neverachefai.feature.onboarding.ui.OnboardingScreen
-import es.neverachefai.feature.onboarding.ui.WelcomeScreen
 import es.neverachefai.feature.pantry.ui.AddIngredientsScreen
 import es.neverachefai.feature.pantry.ui.FoodDetailScreen
 import es.neverachefai.feature.pantry.ui.IngredientReviewScreen
@@ -24,7 +22,7 @@ import es.neverachefai.feature.recipes.ui.RecipeDetailScreen
 import es.neverachefai.feature.recipes.ui.RecipeGenerationScreen
 import es.neverachefai.feature.recipes.ui.RecipeResultsScreen
 import es.neverachefai.feature.settings.ui.SettingsScreen
-import es.neverachefai.feature.shopping.ui.ShoppingListScreen
+import es.neverachefai.feature.shopping.ui.ShoppingCartScreen
 
 @Composable
 fun NeveraChefApp(
@@ -35,19 +33,20 @@ fun NeveraChefApp(
 ) {
     val onboardingSeen = remember { AppPreferences.isOnboardingSeen() }
     var rootFlow by remember { mutableStateOf(if (onboardingSeen) RootFlow.MAIN else RootFlow.ONBOARDING) }
-    var currentTab by remember { mutableStateOf(MainTab.HOME) }
+    var currentTab by remember { mutableStateOf(MainTab.PANTRY) }
     var pantryFlow by remember { mutableStateOf(PantryFlow.LIST) }
     var selectedFood by remember { mutableStateOf<PantryFoodUi?>(null) }
     var recipesFlow by remember { mutableStateOf(RecipesFlow.GENERATE) }
 
     val completeOnboarding: () -> Unit = {
         AppPreferences.setOnboardingSeen(true)
+        currentTab = MainTab.PANTRY
         rootFlow = RootFlow.MAIN
     }
 
     val openOnboardingFromSettings: () -> Unit = {
         rootFlow = RootFlow.ONBOARDING
-        currentTab = MainTab.HOME
+        currentTab = MainTab.PANTRY
         pantryFlow = PantryFlow.LIST
         selectedFood = null
         recipesFlow = RecipesFlow.GENERATE
@@ -56,14 +55,14 @@ fun NeveraChefApp(
     val resetAppState: () -> Unit = {
         AppPreferences.clearAll()
         rootFlow = RootFlow.ONBOARDING
-        currentTab = MainTab.HOME
+        currentTab = MainTab.PANTRY
         pantryFlow = PantryFlow.LIST
         selectedFood = null
         recipesFlow = RecipesFlow.GENERATE
     }
 
     when (rootFlow) {
-        RootFlow.WELCOME -> WelcomeScreen(onContinue = { rootFlow = RootFlow.ONBOARDING })
+        RootFlow.WELCOME -> OnboardingScreen(onContinue = { rootFlow = RootFlow.PREFERENCES })
         RootFlow.ONBOARDING -> OnboardingScreen(onContinue = { rootFlow = RootFlow.PREFERENCES })
         RootFlow.PREFERENCES -> InitialPreferencesScreen(onSave = completeOnboarding)
         RootFlow.MAIN -> NeveraMainScaffold(
@@ -71,17 +70,6 @@ fun NeveraChefApp(
             onTabSelected = { currentTab = it },
             content = {
                 when (currentTab) {
-                    MainTab.HOME -> HomeScreen(
-                        onGoPantry = {
-                            currentTab = MainTab.PANTRY
-                            pantryFlow = PantryFlow.LIST
-                        },
-                        onGoRecipes = {
-                            currentTab = MainTab.RECIPES
-                            recipesFlow = RecipesFlow.GENERATE
-                        },
-                    )
-
                     MainTab.PANTRY -> when (pantryFlow) {
                         PantryFlow.LIST -> PantryScreen(
                             onAdd = { pantryFlow = PantryFlow.ADD },
@@ -118,7 +106,7 @@ fun NeveraChefApp(
                         )
                     }
 
-                    MainTab.SHOPPING -> ShoppingListScreen()
+                    MainTab.SHOPPING -> ShoppingCartScreen()
                     MainTab.SETTINGS -> SettingsScreen(
                         cameraPermissionGranted = cameraPermissionGranted,
                         microphonePermissionGranted = microphonePermissionGranted,

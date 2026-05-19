@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -26,12 +27,10 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -45,19 +44,22 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import es.neverachefai.core.designsystem.NeveraChefColors
+import es.neverachefai.core.persistence.LocalAppContentStore
+import es.neverachefai.core.persistence.ShoppingItemRecord
 import neverachefai.shared.generated.resources.Res
-import neverachefai.shared.generated.resources.ic_nc_check_square
 import neverachefai.shared.generated.resources.ic_nc_fridge
 import neverachefai.shared.generated.resources.ic_nc_pantry
 import neverachefai.shared.generated.resources.ic_nc_plus
+import neverachefai.shared.generated.resources.ic_nc_scan
 import neverachefai.shared.generated.resources.ic_nc_shopping_basket
-import neverachefai.shared.generated.resources.ic_nc_square
 import neverachefai.shared.generated.resources.ic_nc_trash
+import neverachefai.shared.generated.resources.ic_food_fish
 import neverachefai.shared.generated.resources.ic_food_tomato
 import neverachefai.shared.generated.resources.ic_food_rice
 import neverachefai.shared.generated.resources.ic_food_yogurt
@@ -72,7 +74,13 @@ private val AccentSoft = Color(0xFFEAF2FF)
 private val Soft = Color(0xFFF6F8FB)
 private val Line = Color(0xFFE6E8EC)
 
-private enum class ShoppingDestination { Fridge, Pantry }
+internal enum class ShoppingDestination { Fridge, Pantry, Freezer }
+
+private val ShoppingDestinationOrder = listOf(
+    ShoppingDestination.Fridge,
+    ShoppingDestination.Pantry,
+    ShoppingDestination.Freezer,
+)
 
 private data class ShoppingVisualItemUi(
     val id: String,
@@ -80,7 +88,7 @@ private data class ShoppingVisualItemUi(
     val quantity: String,
     val category: String,
     val destination: ShoppingDestination,
-    val selected: Boolean,
+    val iconKey: String,
     val iconRes: DrawableResource,
 )
 
@@ -89,10 +97,7 @@ fun ShoppingListScreen() {
     var selectedDestination by remember { mutableStateOf(ShoppingDestination.Fridge) }
     val items = remember {
         mutableStateListOf(
-            ShoppingVisualItemUi("yogurt", "Yogur natural", "4 uds", "lacteos", ShoppingDestination.Fridge, false, Res.drawable.ic_food_yogurt),
-            ShoppingVisualItemUi("tomato", "Tomates cherry", "500 g", "verdura", ShoppingDestination.Fridge, true, Res.drawable.ic_food_tomato),
-            ShoppingVisualItemUi("broth", "Caldo de verduras", "1 brick", "receta sopa", ShoppingDestination.Pantry, false, Res.drawable.ic_food_soup),
-            ShoppingVisualItemUi("rice", "Arroz redondo", "1 kg", "basico", ShoppingDestination.Pantry, false, Res.drawable.ic_food_rice),
+            *LocalAppContentStore.loadShoppingItems().map { it.toUi() }.toTypedArray(),
         )
     }
     var selectedItemId by remember { mutableStateOf<String?>(null) }
@@ -106,19 +111,40 @@ fun ShoppingListScreen() {
 
     val fridgeCount = items.count { it.destination == ShoppingDestination.Fridge }
     val pantryCount = items.count { it.destination == ShoppingDestination.Pantry }
-    val selectedCount = items.count { it.selected }
+    val freezerCount = items.count { it.destination == ShoppingDestination.Freezer }
+
+    fun persistItems() {
+        LocalAppContentStore.saveShoppingItems(items.map { it.toRecord() })
+    }
 
     fun updateItem(id: String, transform: (ShoppingVisualItemUi) -> ShoppingVisualItemUi) {
         val index = items.indexOfFirst { it.id == id }
-        if (index >= 0) items[index] = transform(items[index])
+        if (index >= 0) {
+            items[index] = transform(items[index])
+            persistItems()
+        }
     }
 
     fun moveItem(id: String, destination: ShoppingDestination) {
         updateItem(id) { it.copy(destination = destination) }
     }
 
+    fun moveItemByDrag(id: String, currentDestination: ShoppingDestination, dragDown: Boolean) {
+        val currentIndex = ShoppingDestinationOrder.indexOf(currentDestination)
+        val nextIndex = (currentIndex + if (dragDown) 1 else -1).coerceIn(ShoppingDestinationOrder.indices)
+        moveItem(id, ShoppingDestinationOrder[nextIndex])
+    }
+
     fun deleteItem(id: String) {
-        items.removeAll { it.id == id }
+        if (items.removeAll { it.id == id }) {
+            persistItems()
+        }
+    }
+
+    fun clearDestination(destination: ShoppingDestination) {
+        if (items.removeAll { it.destination == destination }) {
+            persistItems()
+        }
     }
 
     Column(
@@ -128,79 +154,49 @@ fun ShoppingListScreen() {
         verticalArrangement = Arrangement.spacedBy(11.dp),
     ) {
         ShoppingVisualHeader(onAddProductClick = {})
-        ShoppingHero(fridgeCount, pantryCount, items.size, selectedCount)
+        ShoppingHero(fridgeCount, pantryCount, freezerCount, items.size)
         AddProductPanel(selectedDestination, { selectedDestination = it }, onAddProductClick = {})
-        DestinationFilters(items.size, fridgeCount, pantryCount)
+        DestinationFilters(items.size, fridgeCount, pantryCount, freezerCount)
         Text(
-            "Tip: toca o manten pulsado para editar/eliminar. Arrastra arriba/abajo para mover entre nevera y despensa.",
+            "Tip: toca o manten pulsado para editar/eliminar. Arrastra arriba/abajo para mover entre nevera, despensa y congelador.",
             style = MaterialTheme.typography.bodySmall,
             color = Muted,
         )
 
-        SectionHeader(title = "Para la nevera")
-        items.filter { it.destination == ShoppingDestination.Fridge }.forEach { item ->
-            ShoppingVisualItemRow(
-                item = item,
-                onToggleSelected = { updateItem(item.id) { it.copy(selected = !it.selected) } },
-                onOpenActions = { selectedItemId = item.id },
-                onMoveByDrag = { dragDown ->
-                    if (dragDown) moveItem(item.id, ShoppingDestination.Pantry)
-                },
-            )
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            SectionHeader(title = "Para despensa")
-            Text(
-                text = "Limpiar despensa",
-                color = Muted,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-            )
-        }
-        items.filter { it.destination == ShoppingDestination.Pantry }.forEach { item ->
-            ShoppingVisualItemRow(
-                item = item,
-                onToggleSelected = { updateItem(item.id) { it.copy(selected = !it.selected) } },
-                onOpenActions = { selectedItemId = item.id },
-                onMoveByDrag = { dragDown ->
-                    if (!dragDown) moveItem(item.id, ShoppingDestination.Fridge)
-                },
-            )
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            ClearDestinationButton(
-                text = "Limpiar nevera",
-                icon = Res.drawable.ic_nc_trash,
-                tint = Accent,
-                background = AccentSoft,
-                onClick = { items.removeAll { it.destination == ShoppingDestination.Fridge } },
-                modifier = Modifier.weight(1f),
-            )
-            ClearDestinationButton(
-                text = "Limpiar despensa",
-                icon = Res.drawable.ic_nc_trash,
-                tint = Muted,
-                background = Soft,
-                border = true,
-                onClick = { items.removeAll { it.destination == ShoppingDestination.Pantry } },
-                modifier = Modifier.weight(1f),
-            )
-        }
+        ShoppingDestinationSection(
+            title = "Para la nevera",
+            clearLabel = "Limpiar nevera",
+            items = items.filter { it.destination == ShoppingDestination.Fridge },
+            onClear = { clearDestination(ShoppingDestination.Fridge) },
+            onOpenActions = { itemId -> selectedItemId = itemId },
+            onMoveByDrag = { itemId, dragDown -> moveItemByDrag(itemId, ShoppingDestination.Fridge, dragDown) },
+        )
+        ShoppingDestinationSection(
+            title = "Para despensa",
+            clearLabel = "Limpiar despensa",
+            items = items.filter { it.destination == ShoppingDestination.Pantry },
+            onClear = { clearDestination(ShoppingDestination.Pantry) },
+            onOpenActions = { itemId -> selectedItemId = itemId },
+            onMoveByDrag = { itemId, dragDown -> moveItemByDrag(itemId, ShoppingDestination.Pantry, dragDown) },
+        )
+        ShoppingDestinationSection(
+            title = "Para congelador",
+            clearLabel = "Limpiar congelador",
+            items = items.filter { it.destination == ShoppingDestination.Freezer },
+            onClear = { clearDestination(ShoppingDestination.Freezer) },
+            onOpenActions = { itemId -> selectedItemId = itemId },
+            onMoveByDrag = { itemId, dragDown -> moveItemByDrag(itemId, ShoppingDestination.Freezer, dragDown) },
+        )
         Spacer(modifier = Modifier.height(8.dp))
     }
 
     if (selectedItem != null) {
-        ItemActionsSheet(
-            item = selectedItem,
+        ShoppingListActionSheet(
+            itemName = selectedItem.name,
+            quantity = selectedItem.quantity,
+            category = selectedItem.category,
+            iconRes = selectedItem.iconRes,
+            currentDestination = selectedItem.destination,
             onDismiss = { selectedItemId = null },
             onEdit = {
                 selectedItemId = null
@@ -213,11 +209,16 @@ fun ShoppingListScreen() {
                 deleteItem(selectedItem.id)
                 selectedItemId = null
             },
-            onMove = {
-                moveItem(
-                    selectedItem.id,
-                    if (selectedItem.destination == ShoppingDestination.Fridge) ShoppingDestination.Pantry else ShoppingDestination.Fridge,
-                )
+            onMoveToFridge = {
+                moveItem(selectedItem.id, ShoppingDestination.Fridge)
+                selectedItemId = null
+            },
+            onMoveToPantry = {
+                moveItem(selectedItem.id, ShoppingDestination.Pantry)
+                selectedItemId = null
+            },
+            onMoveToFreezer = {
+                moveItem(selectedItem.id, ShoppingDestination.Freezer)
                 selectedItemId = null
             },
         )
@@ -275,7 +276,7 @@ private fun ShoppingVisualHeader(onAddProductClick: () -> Unit) {
 }
 
 @Composable
-private fun ShoppingHero(fridgeCount: Int, pantryCount: Int, totalCount: Int, selectedCount: Int) {
+private fun ShoppingHero(fridgeCount: Int, pantryCount: Int, freezerCount: Int, totalCount: Int) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -283,11 +284,16 @@ private fun ShoppingHero(fridgeCount: Int, pantryCount: Int, totalCount: Int, se
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Text("Hoy compras $totalCount cosas", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-        Text("$fridgeCount para nevera · $pantryCount para despensa · $selectedCount marcadas", color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
+        Text("Llevas $totalCount productos", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Text(
+            "$fridgeCount para nevera · $pantryCount para despensa · $freezerCount para congelador",
+            color = Color.White.copy(alpha = 0.8f),
+            fontSize = 12.sp,
+        )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             HeroMetric("Nevera", fridgeCount, Modifier.weight(1f))
             HeroMetric("Despensa", pantryCount, Modifier.weight(1f))
+            HeroMetric("Congelador", freezerCount, Modifier.weight(1f))
             HeroMetric("Total", totalCount, Modifier.weight(1f), highlighted = true)
         }
     }
@@ -298,11 +304,11 @@ private fun HeroMetric(label: String, value: Int, modifier: Modifier = Modifier,
     Column(
         modifier = modifier
             .background(if (highlighted) Accent else Color.White.copy(alpha = 0.12f), RoundedCornerShape(14.dp))
-            .padding(10.dp),
+            .padding(horizontal = 8.dp, vertical = 9.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Text(value.toString(), color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-        Text(label.uppercase(), color = Color.White.copy(alpha = if (highlighted) 1f else 0.8f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        Text(value.toString(), color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+        Text(label.uppercase(), color = Color.White.copy(alpha = if (highlighted) 1f else 0.8f), fontSize = 9.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -315,10 +321,10 @@ private fun AddProductPanel(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, Line, RoundedCornerShape(18.dp))
-            .background(Soft, RoundedCornerShape(18.dp))
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+            .border(1.dp, Line, RoundedCornerShape(20.dp))
+            .background(Color.White, RoundedCornerShape(20.dp))
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Surface(onClick = onAddProductClick, color = Color.Transparent) {
             Row(
@@ -331,12 +337,37 @@ private fun AddProductPanel(
                     Text("Anadir producto", color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     Text("Nombre, cantidad y destino", color = Muted, fontSize = 11.sp)
                 }
-                Text("SUMAR", color = Accent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Box(
+                    modifier = Modifier
+                        .background(AccentSoft, RoundedCornerShape(999.dp))
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                ) {
+                    Text("SUMAR", color = Accent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            DestinationPill("Nevera", Res.drawable.ic_nc_fridge, selectedDestination == ShoppingDestination.Fridge, { onDestinationSelected(ShoppingDestination.Fridge) }, Modifier.weight(1f))
-            DestinationPill("Despensa", Res.drawable.ic_nc_pantry, selectedDestination == ShoppingDestination.Pantry, { onDestinationSelected(ShoppingDestination.Pantry) }, Modifier.weight(1f))
+            DestinationPill(
+                "Nevera",
+                Res.drawable.ic_nc_fridge,
+                selectedDestination == ShoppingDestination.Fridge,
+                { onDestinationSelected(ShoppingDestination.Fridge) },
+                Modifier.weight(1f),
+            )
+            DestinationPill(
+                "Despensa",
+                Res.drawable.ic_nc_pantry,
+                selectedDestination == ShoppingDestination.Pantry,
+                { onDestinationSelected(ShoppingDestination.Pantry) },
+                Modifier.weight(1f),
+            )
+            DestinationPill(
+                "Congelador",
+                Res.drawable.ic_nc_scan,
+                selectedDestination == ShoppingDestination.Freezer,
+                { onDestinationSelected(ShoppingDestination.Freezer) },
+                Modifier.weight(1f),
+            )
         }
     }
 }
@@ -357,19 +388,35 @@ private fun DestinationPill(
         border = if (selected) null else BorderStroke(1.dp, Line),
     ) {
         Row(horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-            Icon(painter = painterResource(icon), contentDescription = null, tint = if (selected) Color.White else Muted, modifier = Modifier.size(15.dp))
+            Icon(
+                painter = painterResource(icon),
+                contentDescription = null,
+                tint = if (selected) Color.White else Muted,
+                modifier = Modifier.size(15.dp),
+            )
             Spacer(modifier = Modifier.size(6.dp))
-            Text(text, color = if (selected) Color.White else Muted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Text(
+                text = text,
+                color = if (selected) Color.White else Muted,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
 
 @Composable
-private fun DestinationFilters(totalCount: Int, fridgeCount: Int, pantryCount: Int) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+private fun DestinationFilters(totalCount: Int, fridgeCount: Int, pantryCount: Int, freezerCount: Int) {
+    Row(
+        modifier = Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         FilterChipText("Todos $totalCount", selected = true)
         FilterChipText("Nevera $fridgeCount", selected = false, accent = true)
         FilterChipText("Despensa $pantryCount", selected = false)
+        FilterChipText("Congelador $freezerCount", selected = false)
     }
 }
 
@@ -390,23 +437,56 @@ private fun FilterChipText(text: String, selected: Boolean, accent: Boolean = fa
 }
 
 @Composable
-private fun SectionHeader(title: String) {
-    Text(title, color = Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+private fun ShoppingDestinationSection(
+    title: String,
+    clearLabel: String,
+    items: List<ShoppingVisualItemUi>,
+    onClear: () -> Unit,
+    onOpenActions: (String) -> Unit,
+    onMoveByDrag: (String, Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(title, color = Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        TextButton(onClick = onClear) {
+            Text(clearLabel, color = Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+    if (items.isEmpty()) {
+        Text(
+            text = "Sin artículos en esta sección",
+            color = Muted,
+            fontSize = 11.sp,
+        )
+    } else {
+        items.forEach { item ->
+            ShoppingVisualItemRow(
+                item = item,
+                onOpenActions = { onOpenActions(item.id) },
+                onMoveByDrag = { dragDown -> onMoveByDrag(item.id, dragDown) },
+            )
+        }
+    }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ShoppingVisualItemRow(
     item: ShoppingVisualItemUi,
-    onToggleSelected: () -> Unit,
     onOpenActions: () -> Unit,
     onMoveByDrag: (dragDown: Boolean) -> Unit,
 ) {
     val density = LocalDensity.current
     val dragThresholdPx = with(density) { 76.dp.toPx() }
     var dragOffsetY by remember(item.id) { mutableStateOf(0f) }
-    val isFridge = item.destination == ShoppingDestination.Fridge
-    val background = if (isFridge && !item.selected) AccentSoft else Color.White
+    val background = when {
+        item.destination == ShoppingDestination.Fridge -> AccentSoft
+        item.destination == ShoppingDestination.Freezer -> Color(0xFFEAF2FF)
+        else -> Color.White
+    }
 
     Row(
         modifier = Modifier
@@ -432,31 +512,34 @@ private fun ShoppingVisualItemRow(
                 onClick = onOpenActions,
                 onLongClick = onOpenActions,
             )
-            .height(62.dp)
+            .height(72.dp)
             .border(
                 width = if (background == Color.White) 1.dp else 0.dp,
                 color = Line,
                 shape = RoundedCornerShape(15.dp),
             )
             .background(background, RoundedCornerShape(15.dp))
-            .padding(10.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Surface(
-            onClick = onToggleSelected,
-            color = Color.Transparent,
+        Box(
+            modifier = Modifier
+                .size(38.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color.White.copy(alpha = 0.72f)),
+            contentAlignment = Alignment.Center,
         ) {
             Icon(
-                painter = painterResource(if (item.selected) Res.drawable.ic_nc_check_square else Res.drawable.ic_nc_square),
-                contentDescription = if (item.selected) "Producto seleccionado" else "Producto sin seleccionar",
+                painter = painterResource(item.iconRes),
+                contentDescription = null,
                 tint = Accent,
-                modifier = Modifier.size(20.dp),
+                modifier = Modifier.size(18.dp),
             )
         }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(item.name, color = if (item.selected) Muted else Ink, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-            Text("${item.quantity} · ${item.category}", color = Muted, fontSize = 11.sp)
+            Text(item.name, color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Text("${item.quantity} · ${item.category}", color = Muted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         DestinationTag(destination = item.destination)
     }
@@ -465,18 +548,51 @@ private fun ShoppingVisualItemRow(
 @Composable
 private fun DestinationTag(destination: ShoppingDestination) {
     val isFridge = destination == ShoppingDestination.Fridge
-    val icon = if (isFridge) Res.drawable.ic_nc_fridge else Res.drawable.ic_nc_pantry
-    val text = if (isFridge) "NEVERA" else "DESPENSA"
+    val icon = when (destination) {
+        ShoppingDestination.Fridge -> Res.drawable.ic_nc_fridge
+        ShoppingDestination.Pantry -> Res.drawable.ic_nc_pantry
+        ShoppingDestination.Freezer -> Res.drawable.ic_nc_scan
+    }
+    val text = when (destination) {
+        ShoppingDestination.Fridge -> "NEVERA"
+        ShoppingDestination.Pantry -> "DESPENSA"
+        ShoppingDestination.Freezer -> "CONGELADOR"
+    }
     Row(
         modifier = Modifier
-            .background(if (isFridge) Color.White else Soft, RoundedCornerShape(999.dp))
+            .background(
+                when (destination) {
+                    ShoppingDestination.Fridge -> Color.White
+                    ShoppingDestination.Pantry -> Soft
+                    ShoppingDestination.Freezer -> Color(0xFFEAF2FF)
+                },
+                RoundedCornerShape(999.dp),
+            )
             .then(if (isFridge) Modifier else Modifier.border(1.dp, Line, RoundedCornerShape(999.dp)))
             .padding(horizontal = 8.dp, vertical = 5.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(painter = painterResource(icon), contentDescription = null, tint = if (isFridge) Accent else Muted, modifier = Modifier.size(12.dp))
-        Text(text, color = if (isFridge) Accent else Muted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = null,
+            tint = when (destination) {
+                ShoppingDestination.Fridge -> Accent
+                ShoppingDestination.Pantry -> Muted
+                ShoppingDestination.Freezer -> Accent
+            },
+            modifier = Modifier.size(12.dp),
+        )
+        Text(
+            text = text,
+            color = when (destination) {
+                ShoppingDestination.Fridge -> Accent
+                ShoppingDestination.Pantry -> Muted
+                ShoppingDestination.Freezer -> Accent
+            },
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+        )
     }
 }
 
@@ -501,144 +617,6 @@ private fun ClearDestinationButton(
             Icon(painter = painterResource(icon), contentDescription = null, tint = tint, modifier = Modifier.size(15.dp))
             Spacer(modifier = Modifier.size(6.dp))
             Text(text, color = tint, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-        }
-    }
-}
-
-@Composable
-private fun FoodIconBubble(
-    iconRes: DrawableResource,
-    tintColor: Color,
-    backgroundColor: Color,
-) {
-    Box(
-        modifier = Modifier
-            .size(48.dp)
-            .background(backgroundColor, RoundedCornerShape(12.dp)),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            painter = painterResource(iconRes),
-            contentDescription = null,
-            tint = tintColor,
-            modifier = Modifier.size(22.dp),
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ItemActionsSheet(
-    item: ShoppingVisualItemUi,
-    onDismiss: () -> Unit,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit,
-    onMove: () -> Unit,
-) {
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = Color.White,
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 20.dp, end = 20.dp, bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .size(width = 42.dp, height = 5.dp)
-                    .background(Color(0xFFD8DCE3), RoundedCornerShape(999.dp)),
-            )
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Soft, RoundedCornerShape(18.dp))
-                    .padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                FoodIconBubble(iconRes = item.iconRes, tintColor = NeveraChefColors.Blue, backgroundColor = AccentSoft)
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(item.name, color = Ink, fontSize = 34.sp / 2, fontWeight = FontWeight.Bold)
-                    Text("${item.quantity} · ${item.category} · Producto seleccionado", color = Muted, fontSize = 12.sp)
-                }
-            }
-
-            Text(
-                text = "¿Qué quieres hacer con este producto?",
-                color = Ink,
-                fontSize = 32.sp / 2,
-                fontWeight = FontWeight.Bold,
-            )
-
-            ActionSheetRow(
-                icon = if (item.destination == ShoppingDestination.Fridge) Res.drawable.ic_nc_pantry else Res.drawable.ic_nc_fridge,
-                title = if (item.destination == ShoppingDestination.Fridge) "Mover a despensa" else "Mover a nevera",
-                body = if (item.destination == ShoppingDestination.Fridge) "Guardar como básico o producto seco" else "Marcar como fresco al terminar la compra",
-                background = if (item.destination == ShoppingDestination.Fridge) NeveraChefColors.SuccessSoft else AccentSoft,
-                contentColor = if (item.destination == ShoppingDestination.Fridge) Color(0xFF218A54) else Accent,
-                onClick = onMove,
-            )
-            ActionSheetRow(
-                icon = Res.drawable.ic_nc_plus,
-                title = "Modificar cantidad o nombre",
-                body = "Editar antes de guardarlo",
-                background = Color.White,
-                contentColor = Ink,
-                bordered = true,
-                onClick = onEdit,
-            )
-            ActionSheetRow(
-                icon = Res.drawable.ic_nc_trash,
-                title = "Eliminar de la lista",
-                body = "No borra alimentos ya guardados",
-                background = Color(0xFFFFE7E2),
-                contentColor = Color(0xFFC93A2F),
-                onClick = onDelete,
-            )
-        }
-    }
-}
-
-@Composable
-private fun ActionSheetRow(
-    icon: DrawableResource,
-    title: String,
-    body: String,
-    background: Color,
-    contentColor: Color,
-    onClick: () -> Unit,
-    bordered: Boolean = false,
-) {
-    Surface(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        color = background,
-        border = if (bordered) BorderStroke(1.dp, Line) else null,
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                painter = painterResource(icon),
-                contentDescription = null,
-                tint = contentColor,
-                modifier = Modifier.size(20.dp),
-            )
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(title, color = contentColor, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text(body, color = Muted, style = MaterialTheme.typography.bodySmall)
-            }
         }
     }
 }
@@ -684,5 +662,46 @@ private fun EditItemDialog(
                 }
             }
         }
+    }
+}
+
+private fun ShoppingItemRecord.toUi(): ShoppingVisualItemUi {
+    return ShoppingVisualItemUi(
+        id = id,
+        name = name,
+        quantity = quantity,
+        category = category,
+        destination = when (destinationKey) {
+            "freezer" -> ShoppingDestination.Freezer
+            "pantry" -> ShoppingDestination.Pantry
+            else -> ShoppingDestination.Fridge
+        },
+        iconKey = iconKey,
+        iconRes = shoppingIconResource(iconKey),
+    )
+}
+
+private fun ShoppingVisualItemUi.toRecord(): ShoppingItemRecord {
+    return ShoppingItemRecord(
+        id = id,
+        name = name,
+        quantity = quantity,
+        category = category,
+        destinationKey = when (destination) {
+            ShoppingDestination.Freezer -> "freezer"
+            ShoppingDestination.Pantry -> "pantry"
+            ShoppingDestination.Fridge -> "fridge"
+        },
+        iconKey = iconKey,
+    )
+}
+
+private fun shoppingIconResource(iconKey: String): DrawableResource {
+    return when (iconKey) {
+        "fish" -> Res.drawable.ic_food_fish
+        "rice" -> Res.drawable.ic_food_rice
+        "tomato" -> Res.drawable.ic_food_tomato
+        "yogurt" -> Res.drawable.ic_food_yogurt
+        else -> Res.drawable.ic_food_soup
     }
 }

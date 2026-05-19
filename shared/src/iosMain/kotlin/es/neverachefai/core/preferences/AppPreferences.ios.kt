@@ -15,7 +15,21 @@ actual object AppPreferences {
         defaults.setBool(seen, KEY_ONBOARDING_SEEN)
     }
 
+    actual fun getString(key: String): String? {
+        return defaults.stringForKey(key)
+    }
+
+    actual fun setString(key: String, value: String?) {
+        if (value == null) {
+            defaults.removeObjectForKey(key)
+        } else {
+            defaults.setObject(value, key)
+        }
+    }
+
     actual fun clearAll() {
-        defaults.removeObjectForKey(KEY_ONBOARDING_SEEN)
+        defaults.dictionaryRepresentation().keys.forEach { key ->
+            defaults.removeObjectForKey(key as String)
+        }
     }
 }

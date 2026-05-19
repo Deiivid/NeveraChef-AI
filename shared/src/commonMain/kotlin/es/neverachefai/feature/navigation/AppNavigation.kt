@@ -8,7 +8,6 @@ enum class RootFlow {
 }
 
 enum class MainTab(val label: String, val shortLabel: String) {
-    HOME("Inicio", "I"),
     PANTRY("Nevera", "N"),
     RECIPES("Recetas", "R"),
     SHOPPING("Compra", "C"),

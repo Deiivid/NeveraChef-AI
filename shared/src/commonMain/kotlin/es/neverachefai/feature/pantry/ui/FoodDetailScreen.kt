@@ -77,7 +77,6 @@ fun FoodDetailScreen(
                     Text("‹", color = NeveraChefColors.Ink, fontSize = 28.sp, fontWeight = FontWeight.Normal)
                 }
             }
-            Text("Detalle", color = NeveraChefColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             Surface(
                 onClick = {},
                 color = NeveraChefColors.AccentSoft,

@@ -120,7 +120,6 @@ private fun BottomTab(
 
 private fun MainTab.iconRes(): DrawableResource {
     return when (this) {
-        MainTab.HOME -> Res.drawable.ic_nc_scan
         MainTab.PANTRY -> Res.drawable.ic_nc_fridge
         MainTab.RECIPES -> Res.drawable.ic_nc_chef_hat
         MainTab.SHOPPING -> Res.drawable.ic_nc_shopping_basket

@@ -21,6 +21,20 @@ actual object AppPreferences {
         prefs?.edit()?.putBoolean(KEY_ONBOARDING_SEEN, seen)?.apply()
     }
 
+    actual fun getString(key: String): String? {
+        return prefs?.getString(key, null)
+    }
+
+    actual fun setString(key: String, value: String?) {
+        prefs?.edit()?.apply {
+            if (value == null) {
+                remove(key)
+            } else {
+                putString(key, value)
+            }
+        }?.apply()
+    }
+
     actual fun clearAll() {
         prefs?.edit()?.clear()?.apply()
     }
