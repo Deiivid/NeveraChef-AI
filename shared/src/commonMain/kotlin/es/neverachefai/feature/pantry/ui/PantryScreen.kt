@@ -1,11 +1,12 @@
 package es.neverachefai.feature.pantry.ui
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -37,12 +38,10 @@ import es.neverachefai.core.designsystem.NeveraChefColors
 import es.neverachefai.core.persistence.LocalAppContentStore
 import es.neverachefai.core.persistence.PantryFoodRecord
 import neverachefai.shared.generated.resources.Res
-import neverachefai.shared.generated.resources.ic_food_egg
-import neverachefai.shared.generated.resources.ic_food_fish
-import neverachefai.shared.generated.resources.ic_food_lentils
-import neverachefai.shared.generated.resources.ic_food_rice
-import neverachefai.shared.generated.resources.ic_food_spinach
-import neverachefai.shared.generated.resources.ic_food_soup
+import neverachefai.shared.generated.resources.ic_cat_eggs
+import neverachefai.shared.generated.resources.ic_cat_fish
+import neverachefai.shared.generated.resources.ic_cat_pasta_rice_legumes
+import neverachefai.shared.generated.resources.ic_cat_vegetables
 import neverachefai.shared.generated.resources.ic_nc_fridge
 import neverachefai.shared.generated.resources.ic_nc_pantry
 import neverachefai.shared.generated.resources.ic_nc_plus
@@ -96,31 +95,17 @@ fun PantryScreen(
             .padding(horizontal = 6.dp, vertical = 6.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    text = "Tu inventario",
-                    color = NeveraChefColors.Ink,
-                    fontSize = 26.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-        }
 
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(NeveraChefColors.Ink, RoundedCornerShape(26.dp))
+                .background(Color(0xFFFEF3C7), RoundedCornerShape(26.dp))
                 .padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
-                text = "${foods.size} alimentos guardados",
-                color = Color.White,
+                text = "Tienes ${foods.size} Alimentos",
+                color = Color.Black,
                 fontSize = 21.sp,
                 fontWeight = FontWeight.Bold,
             )
@@ -170,6 +155,8 @@ fun PantryScreen(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    Spacer(modifier = Modifier.height(6.dp))
+
                     Text(
                         text = when (location) {
                             PantryLocation.FRIDGE -> "En nevera"
@@ -181,13 +168,18 @@ fun PantryScreen(
                         fontWeight = FontWeight.Bold,
                     )
                 }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(NeveraChefColors.Line),
+                )
 
                 sectionFoods.forEach { food ->
                     Surface(
                         onClick = { onFoodClick(food) },
                         color = Color.White,
                         shape = RoundedCornerShape(18.dp),
-                        border = BorderStroke(1.dp, NeveraChefColors.Line),
                     ) {
                         Row(
                             modifier = Modifier
@@ -198,29 +190,20 @@ fun PantryScreen(
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(42.dp)
-                                    .background(
-                                        when (food.location) {
-                                            PantryLocation.FRIDGE -> NeveraChefColors.SuccessSoft
-                                            PantryLocation.PANTRY -> NeveraChefColors.WarningSoft
-                                            PantryLocation.FREEZER -> NeveraChefColors.AccentSoft
-                                        },
-                                        RoundedCornerShape(16.dp),
-                                    ),
-                                contentAlignment = Alignment.Center,
+                                    .size(52.dp) ,contentAlignment = Alignment.Center,
                             ) {
                                 Icon(
                                     painter = painterResource(food.iconRes),
                                     contentDescription = food.name,
                                     tint = Color.Unspecified,
-                                    modifier = Modifier.size(26.dp),
+                                    modifier = Modifier.size(52.dp),
                                 )
                             }
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 Text(
                                     food.name,
                                     color = NeveraChefColors.Ink,
-                                    fontSize = 15.sp,
+                                    fontSize = 18.sp,
                                     fontWeight = FontWeight.Bold,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
@@ -228,7 +211,7 @@ fun PantryScreen(
                                 Text(
                                     food.quantity,
                                     color = NeveraChefColors.Muted,
-                                    fontSize = 12.sp,
+                                    fontSize = 14.sp,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                 )
@@ -250,7 +233,7 @@ private fun LocationSummaryItem(
 ) {
     Column(
         modifier = modifier
-            .background(Color.White.copy(alpha = 0.08f), RoundedCornerShape(16.dp))
+            .background(Color.Black.copy(alpha = 0.08f), RoundedCornerShape(16.dp))
             .padding(horizontal = 10.dp, vertical = 9.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
@@ -258,19 +241,19 @@ private fun LocationSummaryItem(
             Icon(
                 painter = painterResource(iconRes),
                 contentDescription = null,
-                tint = Color.White.copy(alpha = 0.92f),
+                tint = Color.Black.copy(alpha = 0.92f),
                 modifier = Modifier.size(16.dp),
             )
             Text(
                 label,
-                color = Color.White.copy(alpha = 0.82f),
+                color = Color.Black.copy(alpha = 0.82f),
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        Text(value, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Text(value, color = Color.Black, fontSize = 20.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -293,11 +276,11 @@ private fun PantryFoodRecord.toUi(): PantryFoodUi {
 
 private fun pantryIconResource(iconKey: String): DrawableResource {
     return when (iconKey) {
-        "egg" -> Res.drawable.ic_food_egg
-        "fish" -> Res.drawable.ic_food_fish
-        "lentils" -> Res.drawable.ic_food_lentils
-        "rice" -> Res.drawable.ic_food_rice
-        "spinach" -> Res.drawable.ic_food_spinach
-        else -> Res.drawable.ic_food_soup
+        "egg" -> Res.drawable.ic_cat_eggs
+        "fish" -> Res.drawable.ic_cat_fish
+        "lentils" -> Res.drawable.ic_cat_pasta_rice_legumes
+        "rice" -> Res.drawable.ic_cat_pasta_rice_legumes
+        "spinach" -> Res.drawable.ic_cat_vegetables
+        else -> Res.drawable.ic_cat_vegetables
     }
 }
