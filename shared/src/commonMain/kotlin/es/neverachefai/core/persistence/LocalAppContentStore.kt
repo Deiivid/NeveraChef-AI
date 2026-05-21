@@ -2,7 +2,7 @@ package es.neverachefai.core.persistence
 
 import es.neverachefai.core.preferences.AppPreferences
 
-private const val STORAGE_VERSION = "v1"
+private const val STORAGE_VERSION = "v2"
 private const val FIELD_SEPARATOR = '#'
 private const val PANTRY_FOODS_KEY = "local_pantry_foods"
 private const val SHOPPING_ITEMS_KEY = "local_shopping_items"
@@ -11,6 +11,8 @@ data class PantryFoodRecord(
     val id: String,
     val name: String,
     val quantity: String,
+    val quantityValue: String = "",
+    val quantityUnit: String = "",
     val category: String,
     val locationKey: String,
     val expiryLabel: String?,
@@ -21,6 +23,9 @@ data class ShoppingItemRecord(
     val id: String,
     val name: String,
     val quantity: String,
+    val quantityValue: String = "",
+    val quantityUnit: String = "",
+    val checked: Boolean = false,
     val category: String,
     val destinationKey: String,
     val iconKey: String,
@@ -48,21 +53,21 @@ object LocalAppContentStore {
     }
 
     private fun defaultPantryFoods(): List<PantryFoodRecord> = listOf(
-        PantryFoodRecord("1", "Espinacas", "1 bolsa", "Verdura", "fridge", "mañana", "spinach"),
-        PantryFoodRecord("2", "Huevos", "6 uds", "Proteína", "fridge", "2 días", "egg"),
-        PantryFoodRecord("3", "Arroz integral", "1 kg", "Cereal", "pantry", "bajo", "rice"),
-        PantryFoodRecord("4", "Lentejas", "500 g", "Legumbre", "pantry", "ok", "lentils"),
-        PantryFoodRecord("5", "Filetes de pescado", "2 uds", "Proteína", "freezer", "20 días", "fish"),
-        PantryFoodRecord("6", "Caldo casero", "1 litro", "Preparado", "freezer", "1 mes", "soup"),
+        PantryFoodRecord("1", "Espinacas", "1 bolsa", "1", "bolsa", "Verdura", "fridge", "mañana", "spinach"),
+        PantryFoodRecord("2", "Huevos", "6 uds", "6", "uds", "Proteína", "fridge", "2 días", "egg"),
+        PantryFoodRecord("3", "Arroz integral", "1 kg", "1", "kg", "Cereal", "pantry", "bajo", "rice"),
+        PantryFoodRecord("4", "Lentejas", "500 g", "500", "g", "Legumbre", "pantry", "ok", "lentils"),
+        PantryFoodRecord("5", "Filetes de pescado", "2 uds", "2", "uds", "Proteína", "freezer", "20 días", "fish"),
+        PantryFoodRecord("6", "Caldo casero", "1 litro", "1", "litro", "Preparado", "freezer", "1 mes", "soup"),
     )
 
     private fun defaultShoppingItems(): List<ShoppingItemRecord> = listOf(
-        ShoppingItemRecord("yogurt", "Yogur natural", "4 uds", "lacteos", "fridge", "yogurt"),
-        ShoppingItemRecord("tomato", "Tomates cherry", "500 g", "verdura", "fridge", "tomato"),
-        ShoppingItemRecord("broth", "Caldo de verduras", "1 brick", "receta sopa", "pantry", "soup"),
-        ShoppingItemRecord("rice", "Arroz redondo", "1 kg", "basico", "pantry", "rice"),
-        ShoppingItemRecord("fish", "Filetes de pescado", "2 uds", "proteina", "freezer", "fish"),
-        ShoppingItemRecord("stock", "Caldo casero", "1 litro", "preparado", "freezer", "soup"),
+        ShoppingItemRecord("yogurt", "Yogur natural", "4 uds", "4", "uds", false, "lacteos", "fridge", "yogurt"),
+        ShoppingItemRecord("tomato", "Tomates cherry", "500 g", "500", "g", false, "verdura", "fridge", "tomato"),
+        ShoppingItemRecord("broth", "Caldo de verduras", "1 brick", "1", "brick", false, "receta sopa", "pantry", "soup"),
+        ShoppingItemRecord("rice", "Arroz redondo", "1 kg", "1", "kg", false, "basico", "pantry", "rice"),
+        ShoppingItemRecord("fish", "Filetes de pescado", "2 uds", "2", "uds", false, "proteina", "freezer", "fish"),
+        ShoppingItemRecord("stock", "Caldo casero", "1 litro", "1", "litro", false, "preparado", "freezer", "soup"),
     )
 
     private fun encodePantryFoods(foods: List<PantryFoodRecord>): String {
@@ -70,7 +75,19 @@ object LocalAppContentStore {
             append(STORAGE_VERSION)
             foods.forEach { food ->
                 append('\n')
-                append(encodeLine(food.id, food.name, food.quantity, food.category, food.locationKey, food.expiryLabel.orEmpty(), food.iconKey))
+                append(
+                    encodeLine(
+                        food.id,
+                        food.name,
+                        food.quantity,
+                        food.quantityValue,
+                        food.quantityUnit,
+                        food.category,
+                        food.locationKey,
+                        food.expiryLabel.orEmpty(),
+                        food.iconKey,
+                    ),
+                )
             }
         }
     }
@@ -80,37 +97,90 @@ object LocalAppContentStore {
             append(STORAGE_VERSION)
             items.forEach { item ->
                 append('\n')
-                append(encodeLine(item.id, item.name, item.quantity, item.category, item.destinationKey, item.iconKey))
+                append(
+                    encodeLine(
+                        item.id,
+                        item.name,
+                        item.quantity,
+                        item.quantityValue,
+                        item.quantityUnit,
+                        item.checked.toString(),
+                        item.category,
+                        item.destinationKey,
+                        item.iconKey,
+                    ),
+                )
             }
         }
     }
 
     private fun decodePantryFoods(raw: String?): List<PantryFoodRecord>? {
-        val rows = decodeRows(raw, 7) ?: return null
+        val lines = raw?.split('\n') ?: return null
+        val version = lines.firstOrNull() ?: return null
+        val expectedFieldCount = if (version == STORAGE_VERSION) 9 else 7
+        val rows = decodeRows(raw, expectedFieldCount) ?: return null
         return rows.map {
-            PantryFoodRecord(
-                id = it[0],
-                name = it[1],
-                quantity = it[2],
-                category = it[3],
-                locationKey = it[4],
-                expiryLabel = it[5].ifEmpty { null },
-                iconKey = it[6],
-            )
+            if (expectedFieldCount == 9) {
+                PantryFoodRecord(
+                    id = it[0],
+                    name = it[1],
+                    quantity = it[2],
+                    quantityValue = it[3],
+                    quantityUnit = it[4],
+                    category = it[5],
+                    locationKey = it[6],
+                    expiryLabel = it[7].ifEmpty { null },
+                    iconKey = it[8],
+                )
+            } else {
+                val parsedQuantity = parseQuantityLabel(it[2])
+                PantryFoodRecord(
+                    id = it[0],
+                    name = it[1],
+                    quantity = it[2],
+                    quantityValue = parsedQuantity.first,
+                    quantityUnit = parsedQuantity.second,
+                    category = it[3],
+                    locationKey = it[4],
+                    expiryLabel = it[5].ifEmpty { null },
+                    iconKey = it[6],
+                )
+            }
         }
     }
 
     private fun decodeShoppingItems(raw: String?): List<ShoppingItemRecord>? {
-        val rows = decodeRows(raw, 6) ?: return null
+        val lines = raw?.split('\n') ?: return null
+        val version = lines.firstOrNull() ?: return null
+        val expectedFieldCount = if (version == STORAGE_VERSION) 9 else 6
+        val rows = decodeRows(raw, expectedFieldCount) ?: return null
         return rows.map {
-            ShoppingItemRecord(
-                id = it[0],
-                name = it[1],
-                quantity = it[2],
-                category = it[3],
-                destinationKey = it[4],
-                iconKey = it[5],
-            )
+            if (expectedFieldCount == 9) {
+                ShoppingItemRecord(
+                    id = it[0],
+                    name = it[1],
+                    quantity = it[2],
+                    quantityValue = it[3],
+                    quantityUnit = it[4],
+                    checked = it[5].toBooleanStrictOrNull() ?: false,
+                    category = it[6],
+                    destinationKey = it[7],
+                    iconKey = it[8],
+                )
+            } else {
+                val parsedQuantity = parseQuantityLabel(it[2])
+                ShoppingItemRecord(
+                    id = it[0],
+                    name = it[1],
+                    quantity = it[2],
+                    quantityValue = parsedQuantity.first,
+                    quantityUnit = parsedQuantity.second,
+                    checked = false,
+                    category = it[3],
+                    destinationKey = it[4],
+                    iconKey = it[5],
+                )
+            }
         }
     }
 
@@ -127,7 +197,7 @@ object LocalAppContentStore {
     private fun decodeRows(raw: String?, expectedFieldCount: Int): List<List<String>>? {
         if (raw == null) return null
         val lines = raw.split('\n')
-        if (lines.firstOrNull() != STORAGE_VERSION) return null
+        if (lines.firstOrNull().isNullOrBlank()) return null
 
         val rows = mutableListOf<List<String>>()
         for (line in lines.drop(1)) {
@@ -156,5 +226,14 @@ object LocalAppContentStore {
         }
 
         return if (index == line.length) fields else null
+    }
+
+    private fun parseQuantityLabel(quantityLabel: String): Pair<String, String> {
+        val parts = quantityLabel.trim().split(' ').filter { it.isNotBlank() }
+        if (parts.isEmpty()) return "" to ""
+        if (parts.size == 1) return parts.first() to ""
+        val value = parts.first()
+        val unit = parts.drop(1).joinToString(" ")
+        return value to unit
     }
 }

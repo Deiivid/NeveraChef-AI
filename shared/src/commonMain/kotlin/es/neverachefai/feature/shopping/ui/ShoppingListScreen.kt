@@ -26,6 +26,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -83,6 +85,8 @@ private data class ShoppingListItemUi(
     val iconRes: DrawableResource,
     val iconKey: String,
     val destinationKey: String,
+    val quantityValue: String,
+    val quantityUnit: String,
     val checked: Boolean,
 )
 
@@ -109,9 +113,9 @@ fun ShoppingListScreen(
             Text(
                 text = "Lista",
                 color = Color(0xFF1D1B20),
-                fontSize = 32.sp,
+                fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                lineHeight = 40.sp,
+                lineHeight = 26.sp,
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -120,13 +124,8 @@ fun ShoppingListScreen(
                 SwipeableShoppingListRow(
                     item = item,
                     onCheckedChange = { checked ->
-                        if (checked) {
-                            moveItemToPantry(item)
-                            items.removeAt(index)
-                            LocalAppContentStore.saveShoppingItems(items.map { it.toRecord() })
-                        } else {
-                            items[index] = item.copy(checked = false)
-                        }
+                        items[index] = item.copy(checked = checked)
+                        LocalAppContentStore.saveShoppingItems(items.map { it.toRecord() })
                     },
                     onRemove = {
                         items.removeAt(index)
@@ -134,6 +133,27 @@ fun ShoppingListScreen(
                     },
                 )
                 Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            if (items.any { it.checked }) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Button(
+                    onClick = {
+                        finalizeCheckedItems(items)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF004BCA)),
+                ) {
+                    Text(
+                        text = "Finalizar compra",
+                        color = Color.White,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(96.dp))
@@ -320,7 +340,7 @@ private fun ShoppingListRow(
 
         Box(
             modifier = Modifier
-                .size(40.dp)
+                .size(48.dp)
                 .clip(CircleShape)
                 .background(Color.Transparent),
             contentAlignment = Alignment.Center,
@@ -329,7 +349,7 @@ private fun ShoppingListRow(
                 painter = painterResource(item.iconRes),
                 contentDescription = item.name,
                 tint = Color.Unspecified,
-                modifier = Modifier.size(22.dp),
+                modifier = Modifier.size(34.dp),
             )
         }
 
@@ -354,27 +374,34 @@ private fun ShoppingListRow(
 
         IconButton(
             onClick = onRemove,
-            modifier = Modifier.size(28.dp),
+            modifier = Modifier.size(40.dp),
         ) {
             Icon(
                 painter = painterResource(Res.drawable.ic_nc_trash),
                 contentDescription = "Eliminar ${item.name}",
                 tint = Color(0xFF737687),
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(22.dp),
             )
         }
     }
 }
 
 private fun ShoppingItemRecord.toUi(): ShoppingListItemUi {
+    val quantityLabel = if (quantity.isNotBlank()) {
+        quantity
+    } else {
+        listOf(quantityValue, quantityUnit).filter { it.isNotBlank() }.joinToString(" ")
+    }
     return ShoppingListItemUi(
         id = id,
         name = name,
-        quantity = quantity,
+        quantity = quantityLabel,
         iconRes = iconKey.toCategoryIconResource(),
         iconKey = iconKey,
         destinationKey = destinationKey,
-        checked = false,
+        quantityValue = quantityValue,
+        quantityUnit = quantityUnit,
+        checked = checked,
     )
 }
 
@@ -383,6 +410,9 @@ private fun ShoppingListItemUi.toRecord(): ShoppingItemRecord {
         id = id,
         name = name,
         quantity = quantity,
+        quantityValue = quantityValue,
+        quantityUnit = quantityUnit,
+        checked = checked,
         category = iconKey,
         destinationKey = destinationKey,
         iconKey = iconKey,
@@ -395,12 +425,22 @@ private fun moveItemToPantry(item: ShoppingListItemUi) {
         id = "pantry_${item.id}_${pantryFoods.size + 1}",
         name = item.name,
         quantity = item.quantity,
+        quantityValue = item.quantityValue,
+        quantityUnit = item.quantityUnit,
         category = item.iconKey,
         locationKey = item.destinationKey,
         expiryLabel = null,
         iconKey = item.iconKey,
     )
     LocalAppContentStore.savePantryFoods(pantryFoods)
+}
+
+private fun finalizeCheckedItems(items: MutableList<ShoppingListItemUi>) {
+    val checkedItems = items.filter { it.checked }
+    if (checkedItems.isEmpty()) return
+    checkedItems.forEach { moveItemToPantry(it) }
+    items.removeAll { it.checked }
+    LocalAppContentStore.saveShoppingItems(items.map { it.toRecord() })
 }
 
 private fun String.toCategoryIconResource(): DrawableResource {

@@ -120,11 +120,15 @@ fun NeveraChefApp(
                                 if (itemName.isNotEmpty()) {
                                     val iconKey = addShoppingState.destination.toCategoryIconKey()
                                     val destinationKey = iconKey.toDestinationKey()
+                                    val parsedQuantity = parseQuantityInput(addShoppingState.quantity)
                                     val currentItems = LocalAppContentStore.loadShoppingItems().toMutableList()
                                     currentItems += ShoppingItemRecord(
                                         id = "shopping_${currentItems.size + 1}_${itemName.lowercase().replace(" ", "_")}",
                                         name = itemName,
-                                        quantity = "${addShoppingState.quantity} unidades",
+                                        quantity = parsedQuantity.displayLabel,
+                                        quantityValue = parsedQuantity.value,
+                                        quantityUnit = parsedQuantity.unit,
+                                        checked = false,
                                         category = iconKey,
                                         destinationKey = destinationKey,
                                         iconKey = iconKey,
@@ -192,4 +196,21 @@ private fun String.toDestinationKey(): String {
         "milk", "yogurts", "cheese", "fruits", "vegetables", "eggs", "juice", "soft_drinks" -> "fridge"
         else -> "pantry"
     }
+}
+
+private data class ParsedQuantity(val value: String, val unit: String, val displayLabel: String)
+
+private fun parseQuantityInput(rawValue: String): ParsedQuantity {
+    val normalized = rawValue.trim()
+    if (normalized.isBlank()) return ParsedQuantity("1", "unidades", "1 unidades")
+
+    val parts = normalized.split(" ").filter { it.isNotBlank() }
+    if (parts.size >= 2) {
+        val value = parts.first()
+        val unit = parts.drop(1).joinToString(" ")
+        return ParsedQuantity(value, unit, "$value $unit")
+    }
+
+    val numericValue = normalized.toIntOrNull()?.coerceAtLeast(1)?.toString() ?: "1"
+    return ParsedQuantity(numericValue, "unidades", "$numericValue unidades")
 }
