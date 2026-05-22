@@ -430,6 +430,7 @@ private fun moveItemToPantry(item: ShoppingListItemUi) {
         category = item.iconKey,
         locationKey = item.destinationKey,
         expiryLabel = null,
+        expiryDateIso = null,
         iconKey = item.iconKey,
     )
     LocalAppContentStore.savePantryFoods(pantryFoods)

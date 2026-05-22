@@ -2,7 +2,7 @@ package es.neverachefai.core.persistence
 
 import es.neverachefai.core.preferences.AppPreferences
 
-private const val STORAGE_VERSION = "v2"
+private const val STORAGE_VERSION = "v3"
 private const val FIELD_SEPARATOR = '#'
 private const val PANTRY_FOODS_KEY = "local_pantry_foods"
 private const val SHOPPING_ITEMS_KEY = "local_shopping_items"
@@ -16,6 +16,7 @@ data class PantryFoodRecord(
     val category: String,
     val locationKey: String,
     val expiryLabel: String?,
+    val expiryDateIso: String? = null,
     val iconKey: String,
 )
 
@@ -53,12 +54,12 @@ object LocalAppContentStore {
     }
 
     private fun defaultPantryFoods(): List<PantryFoodRecord> = listOf(
-        PantryFoodRecord("1", "Espinacas", "1 bolsa", "1", "bolsa", "Verdura", "fridge", "mañana", "spinach"),
-        PantryFoodRecord("2", "Huevos", "6 uds", "6", "uds", "Proteína", "fridge", "2 días", "egg"),
-        PantryFoodRecord("3", "Arroz integral", "1 kg", "1", "kg", "Cereal", "pantry", "bajo", "rice"),
-        PantryFoodRecord("4", "Lentejas", "500 g", "500", "g", "Legumbre", "pantry", "ok", "lentils"),
-        PantryFoodRecord("5", "Filetes de pescado", "2 uds", "2", "uds", "Proteína", "freezer", "20 días", "fish"),
-        PantryFoodRecord("6", "Caldo casero", "1 litro", "1", "litro", "Preparado", "freezer", "1 mes", "soup"),
+        PantryFoodRecord("1", "Espinacas", "1 bolsa", "1", "bolsa", "Verdura", "fridge", "mañana", null, "spinach"),
+        PantryFoodRecord("2", "Huevos", "6 uds", "6", "uds", "Proteína", "fridge", "2 días", null, "egg"),
+        PantryFoodRecord("3", "Arroz integral", "1 kg", "1", "kg", "Cereal", "pantry", "bajo", null, "rice"),
+        PantryFoodRecord("4", "Lentejas", "500 g", "500", "g", "Legumbre", "pantry", "ok", null, "lentils"),
+        PantryFoodRecord("5", "Filetes de pescado", "2 uds", "2", "uds", "Proteína", "freezer", "20 días", null, "fish"),
+        PantryFoodRecord("6", "Caldo casero", "1 litro", "1", "litro", "Preparado", "freezer", "1 mes", null, "soup"),
     )
 
     private fun defaultShoppingItems(): List<ShoppingItemRecord> = listOf(
@@ -85,6 +86,7 @@ object LocalAppContentStore {
                         food.category,
                         food.locationKey,
                         food.expiryLabel.orEmpty(),
+                        food.expiryDateIso.orEmpty(),
                         food.iconKey,
                     ),
                 )
@@ -117,10 +119,14 @@ object LocalAppContentStore {
     private fun decodePantryFoods(raw: String?): List<PantryFoodRecord>? {
         val lines = raw?.split('\n') ?: return null
         val version = lines.firstOrNull() ?: return null
-        val expectedFieldCount = if (version == STORAGE_VERSION) 9 else 7
+        val expectedFieldCount = when (version) {
+            STORAGE_VERSION -> 10
+            "v2" -> 9
+            else -> 7
+        }
         val rows = decodeRows(raw, expectedFieldCount) ?: return null
         return rows.map {
-            if (expectedFieldCount == 9) {
+            if (expectedFieldCount == 10) {
                 PantryFoodRecord(
                     id = it[0],
                     name = it[1],
@@ -130,6 +136,20 @@ object LocalAppContentStore {
                     category = it[5],
                     locationKey = it[6],
                     expiryLabel = it[7].ifEmpty { null },
+                    expiryDateIso = it[8].ifEmpty { null },
+                    iconKey = it[9],
+                )
+            } else if (expectedFieldCount == 9) {
+                PantryFoodRecord(
+                    id = it[0],
+                    name = it[1],
+                    quantity = it[2],
+                    quantityValue = it[3],
+                    quantityUnit = it[4],
+                    category = it[5],
+                    locationKey = it[6],
+                    expiryLabel = it[7].ifEmpty { null },
+                    expiryDateIso = null,
                     iconKey = it[8],
                 )
             } else {
@@ -143,6 +163,7 @@ object LocalAppContentStore {
                     category = it[3],
                     locationKey = it[4],
                     expiryLabel = it[5].ifEmpty { null },
+                    expiryDateIso = null,
                     iconKey = it[6],
                 )
             }

@@ -54,6 +54,7 @@ import neverachefai.shared.generated.resources.ic_cat_meat
 import neverachefai.shared.generated.resources.ic_cat_milk
 import neverachefai.shared.generated.resources.ic_cat_pasta_rice_legumes
 import neverachefai.shared.generated.resources.ic_cat_vegetables
+import neverachefai.shared.generated.resources.ic_caducidad
 import neverachefai.shared.generated.resources.ic_nc_fridge
 import neverachefai.shared.generated.resources.ic_nc_pantry
 import neverachefai.shared.generated.resources.ic_nc_plus
@@ -74,6 +75,7 @@ data class PantryFoodUi(
     val category: String,
     val location: PantryLocation,
     val expiryLabel: String?,
+    val expiryDateIso: String?,
     val iconKey: String,
     val iconRes: DrawableResource,
 )
@@ -250,6 +252,10 @@ fun PantryScreen(
                                         overflow = TextOverflow.Ellipsis,
                                     )
                                 }
+                                ExpirationInfo(
+                                    expiryDateIso = food.expiryDateIso,
+                                    expiryLabel = food.expiryLabel,
+                                )
                             }
                         }
                     }
@@ -629,6 +635,7 @@ fun PantryScreen(
                                     category = newCategory,
                                     locationKey = locationKey,
                                     expiryLabel = null,
+                                    expiryDateIso = null,
                                     iconKey = iconKey,
                                 )
                                 current += newRecord
@@ -661,6 +668,58 @@ fun PantryScreen(
 }
 
 @Composable
+private fun ExpirationInfo(
+    expiryDateIso: String?,
+    expiryLabel: String?,
+) {
+    val relative = getExpirationText(expiryDateIso)
+    val fallback = expiryLabel?.trim().orEmpty().ifBlank { null }
+    val subtitle = relative ?: fallback ?: return
+    val priority = if (relative != null) expirationPriority(expiryDateIso) else ExpirationPriority.UNKNOWN
+
+    val title = when (priority) {
+        ExpirationPriority.EXPIRED -> "Caducado"
+        ExpirationPriority.SOON -> "Caduca pronto"
+        ExpirationPriority.NORMAL -> "Caduca"
+        ExpirationPriority.UNKNOWN -> "Caduca"
+    }
+    val titleColor = when (priority) {
+        ExpirationPriority.EXPIRED -> Color(0xFFB42318)
+        ExpirationPriority.SOON -> Color(0xFFB54708)
+        else -> NeveraChefColors.Muted
+    }
+
+    Column(
+        horizontalAlignment = Alignment.End,
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (priority == ExpirationPriority.SOON || priority == ExpirationPriority.EXPIRED) {
+                Icon(
+                    painter = painterResource(Res.drawable.ic_caducidad),
+                    contentDescription = null,
+                    tint = Color.Unspecified,
+                    modifier = Modifier.size(13.dp),
+                )
+            }
+            Text(
+                text = title,
+                color = titleColor,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+            )
+        }
+        Text(
+            text = subtitle,
+            color = if (priority == ExpirationPriority.NORMAL || priority == ExpirationPriority.UNKNOWN) NeveraChefColors.Muted else titleColor.copy(alpha = 0.9f),
+            fontSize = 10.sp,
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
 private fun LocationSummaryItem(
     iconRes: DrawableResource,
     label: String,
@@ -677,8 +736,8 @@ private fun LocationSummaryItem(
             Icon(
                 painter = painterResource(iconRes),
                 contentDescription = null,
-                tint = Color.Black.copy(alpha = 0.92f),
-                modifier = Modifier.size(16.dp),
+                tint = if (iconRes == Res.drawable.ic_cat_frozen) Color.Unspecified else Color.Black.copy(alpha = 0.92f),
+                modifier = Modifier.size(if (iconRes == Res.drawable.ic_cat_frozen) 18.dp else 16.dp),
             )
             Text(
                 label,
@@ -710,6 +769,7 @@ private fun PantryFoodRecord.toUi(): PantryFoodUi {
             else -> PantryLocation.PANTRY
         },
         expiryLabel = expiryLabel,
+        expiryDateIso = expiryDateIso,
         iconKey = iconKey,
         iconRes = pantryIconResource(iconKey),
     )

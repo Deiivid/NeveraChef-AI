@@ -85,6 +85,26 @@ fun NeveraChefApp(
                         PantryFlow.DETAIL -> FoodDetailScreen(
                             food = selectedFood,
                             onBack = { pantryFlow = PantryFlow.LIST },
+                            onSaveEditedFood = { updated ->
+                                selectedFood = updated
+                                val current = LocalAppContentStore.loadPantryFoods().toMutableList()
+                                val index = current.indexOfFirst { it.id == updated.id }
+                                if (index >= 0) {
+                                    val existing = current[index]
+                                    current[index] = existing.copy(
+                                        name = updated.name,
+                                        quantity = updated.quantity,
+                                        category = updated.category,
+                                        locationKey = when (updated.location) {
+                                            es.neverachefai.feature.pantry.ui.PantryLocation.FRIDGE -> "fridge"
+                                            es.neverachefai.feature.pantry.ui.PantryLocation.PANTRY -> "pantry"
+                                            es.neverachefai.feature.pantry.ui.PantryLocation.FREEZER -> "freezer"
+                                        },
+                                        expiryDateIso = updated.expiryDateIso,
+                                    )
+                                    LocalAppContentStore.savePantryFoods(current)
+                                }
+                            },
                             onGenerateRecipe = {
                                 currentTab = MainTab.RECIPES
                                 recipesFlow = RecipesFlow.GENERATE
