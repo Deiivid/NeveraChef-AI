@@ -1,11 +1,13 @@
 package es.neverachefai.feature.pantry.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,10 +16,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -34,25 +37,25 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import es.neverachefai.core.designsystem.NeveraChefColors
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import neverachefai.shared.generated.resources.Res
-import neverachefai.shared.generated.resources.ic_cat_fruits
-import neverachefai.shared.generated.resources.ic_cat_meat
-import neverachefai.shared.generated.resources.ic_cat_milk
-import neverachefai.shared.generated.resources.ic_cat_pasta_rice_legumes
-import neverachefai.shared.generated.resources.ic_cat_frozen
-import neverachefai.shared.generated.resources.ic_cat_vegetables
+import neverachefai.shared.generated.resources.ic_cat_beer
 import neverachefai.shared.generated.resources.ic_cat_bread
 import neverachefai.shared.generated.resources.ic_cat_canned_food
 import neverachefai.shared.generated.resources.ic_cat_cheese
@@ -60,10 +63,15 @@ import neverachefai.shared.generated.resources.ic_cat_cleaning
 import neverachefai.shared.generated.resources.ic_cat_coffee_tea
 import neverachefai.shared.generated.resources.ic_cat_eggs
 import neverachefai.shared.generated.resources.ic_cat_fish
+import neverachefai.shared.generated.resources.ic_cat_frozen
+import neverachefai.shared.generated.resources.ic_cat_fruits
 import neverachefai.shared.generated.resources.ic_cat_hygiene
 import neverachefai.shared.generated.resources.ic_cat_juice
-import neverachefai.shared.generated.resources.ic_caducidad
+import neverachefai.shared.generated.resources.ic_cat_meat
+import neverachefai.shared.generated.resources.ic_cat_milk
+import neverachefai.shared.generated.resources.ic_cat_oil_vinegar
 import neverachefai.shared.generated.resources.ic_cat_other
+import neverachefai.shared.generated.resources.ic_cat_pasta_rice_legumes
 import neverachefai.shared.generated.resources.ic_cat_pets
 import neverachefai.shared.generated.resources.ic_cat_ready_meals
 import neverachefai.shared.generated.resources.ic_cat_sauces
@@ -71,17 +79,19 @@ import neverachefai.shared.generated.resources.ic_cat_seafood
 import neverachefai.shared.generated.resources.ic_cat_snacks
 import neverachefai.shared.generated.resources.ic_cat_soft_drinks
 import neverachefai.shared.generated.resources.ic_cat_sweets
+import neverachefai.shared.generated.resources.ic_cat_vegetables
 import neverachefai.shared.generated.resources.ic_cat_water_bottle
 import neverachefai.shared.generated.resources.ic_cat_wine
-import neverachefai.shared.generated.resources.ic_cat_beer
 import neverachefai.shared.generated.resources.ic_cat_yogurts
-import neverachefai.shared.generated.resources.ic_cat_oil_vinegar
+import neverachefai.shared.generated.resources.ic_expiry
+import neverachefai.shared.generated.resources.ic_nc_fridge
+import neverachefai.shared.generated.resources.ic_nc_freezer
 import neverachefai.shared.generated.resources.ic_nc_arrow_back
 import neverachefai.shared.generated.resources.ic_nc_chef_hat
-import neverachefai.shared.generated.resources.ic_nc_fridge
 import neverachefai.shared.generated.resources.ic_nc_pantry
 import neverachefai.shared.generated.resources.ic_nc_pencil
 import org.jetbrains.compose.resources.painterResource
+import kotlin.math.abs
 
 private data class EditableProductUiState(
     val name: String,
@@ -105,7 +115,11 @@ fun FoodDetailScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("No hay alimento seleccionado", color = NeveraChefColors.Ink, fontWeight = FontWeight.Bold)
+            Text(
+                "No hay alimento seleccionado",
+                color = NeveraChefColors.Ink,
+                fontWeight = FontWeight.Bold
+            )
             Button(onClick = onBack) { Text("Volver") }
         }
         return
@@ -124,18 +138,25 @@ fun FoodDetailScreen(
         )
     }
     var showDatePicker by remember { mutableStateOf(false) }
-    val datePickerInitialMillis = remember(draft.expirationDateIso) { isoDateToUtcMillis(draft.expirationDateIso) }
-    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = datePickerInitialMillis)
+    val datePickerInitialMillis =
+        remember(draft.expirationDateIso) { isoDateToUtcMillis(draft.expirationDateIso) }
+    val datePickerState =
+        rememberDatePickerState(initialSelectedDateMillis = datePickerInitialMillis)
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        HeaderRow(
+        HeroCard(
+            iconRes = if (isEditing) categoryIconResByKey(draft.category) else food.iconRes,
+            name = if (isEditing) draft.name else food.name,
             isEditing = isEditing,
+            onNameChange = { draft = draft.copy(name = it) },
+            selectedCategory = draft.category,
+            onCategoryChange = { draft = draft.copy(category = it) },
             onBack = onBack,
             onEdit = { isEditing = true },
             onCancelEdit = {
@@ -148,20 +169,11 @@ fun FoodDetailScreen(
                 )
                 isEditing = false
             },
-        )
-
-        HeroCard(
-            iconRes = food.iconRes,
-            name = if (isEditing) draft.name else food.name,
-            isEditing = isEditing,
-            onNameChange = { draft = draft.copy(name = it) },
-            subtitle = buildString {
-                append(if (isEditing) draft.quantity else food.quantity)
-                append(" · ")
-                append(if (isEditing) labelForCategoryKey(draft.category) else food.category)
-                append(" · ")
-                append(if (isEditing) draft.location.label else food.location.label)
-            },
+            subtitle = heroSubtitle(
+                quantity = if (isEditing) draft.quantity else food.quantity,
+                category = if (isEditing) labelForCategoryKey(draft.category) else food.category,
+                location = if (isEditing) draft.location else food.location,
+            ),
         )
 
         val expirationText = getExpirationText(
@@ -219,7 +231,11 @@ fun FoodDetailScreen(
                     },
                 ) { Text("Aceptar") }
             },
-            dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("Cancelar") } },
+            dismissButton = {
+                TextButton(onClick = {
+                    showDatePicker = false
+                }) { Text("Cancelar") }
+            },
         ) { DatePicker(state = datePickerState) }
     }
 }
@@ -271,7 +287,10 @@ private fun HeaderRow(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier.padding(horizontal = 12.dp),
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
                         Icon(
                             painter = painterResource(Res.drawable.ic_nc_pencil),
                             contentDescription = "Editar",
@@ -287,13 +306,17 @@ private fun HeaderRow(
                 color = Color(0xFFF8F2F9),
                 shape = RoundedCornerShape(12.dp),
                 border = BorderStroke(1.dp, Color(0x33C2C6D9)),
-                modifier = Modifier.height(40.dp),
+                modifier = Modifier.size(40.dp),
             ) {
                 Box(
                     contentAlignment = Alignment.Center,
-                    modifier = Modifier.padding(horizontal = 14.dp),
                 ) {
-                    Text("Cancelar", color = NeveraChefColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                    Text(
+                        "✕",
+                        color = NeveraChefColors.Muted,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
             }
         }
@@ -306,6 +329,11 @@ private fun HeroCard(
     name: String,
     isEditing: Boolean,
     onNameChange: (String) -> Unit,
+    selectedCategory: String,
+    onCategoryChange: (String) -> Unit,
+    onBack: () -> Unit,
+    onEdit: () -> Unit,
+    onCancelEdit: () -> Unit,
     subtitle: String,
 ) {
     Column(
@@ -313,38 +341,128 @@ private fun HeroCard(
             .fillMaxWidth()
             .background(Color(0xFFE6E3D4), RoundedCornerShape(24.dp))
             .border(1.dp, Color(0x33C2C6D9), RoundedCornerShape(24.dp))
-            .padding(horizontal = 20.dp, vertical = 14.dp),
+            .padding(horizontal = 20.dp, vertical = 18.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Box(
-            modifier = Modifier
-                .size(96.dp)
-                .background(Color.White, RoundedCornerShape(24.dp))
-                .border(1.dp, Color(0x33C2C6D9), RoundedCornerShape(24.dp)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                painter = painterResource(iconRes),
-                contentDescription = name,
-                tint = Color.Unspecified,
-                modifier = Modifier.size(58.dp),
-            )
+        HeaderRow(
+            isEditing = isEditing,
+            onBack = onBack,
+            onEdit = onEdit,
+            onCancelEdit = onCancelEdit,
+        )
+        Spacer(Modifier.height(12.dp))
+        if (isEditing) {
+            val selectedIndex =
+                allCategoryOptions.indexOfFirst { it.key == selectedCategory }.coerceAtLeast(0)
+            val sliderState = rememberLazyListState(initialFirstVisibleItemIndex = selectedIndex)
+            LaunchedEffect(selectedCategory) {
+                val idx = allCategoryOptions.indexOfFirst { it.key == selectedCategory }
+                if (idx >= 0) sliderState.animateScrollToItem(idx)
+            }
+            LaunchedEffect(sliderState) {
+                snapshotFlow {
+                    val info = sliderState.layoutInfo
+                    if (info.visibleItemsInfo.isEmpty()) null
+                    else {
+                        val center = (info.viewportStartOffset + info.viewportEndOffset) / 2
+                        info.visibleItemsInfo.minByOrNull { item ->
+                            abs((item.offset + item.size / 2) - center)
+                        }?.index
+                    }
+                }.filterNotNull().distinctUntilChanged().collect { centeredIndex ->
+                    val centeredKey =
+                        allCategoryOptions.getOrNull(centeredIndex)?.key ?: return@collect
+                    if (centeredKey != selectedCategory) onCategoryChange(centeredKey)
+                }
+            }
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                val itemWidth = 80.dp
+                val centerPadding = ((maxWidth - itemWidth) / 2).coerceAtLeast(0.dp)
+                LazyRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(104.dp),
+                    state = sliderState,
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = centerPadding),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    items(allCategoryOptions) { option ->
+                        HeroCategoryCarouselItem(
+                            selected = selectedCategory == option.key,
+                            iconRes = option.iconRes,
+                            onClick = { onCategoryChange(option.key) },
+                        )
+                    }
+                }
+            }
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(96.dp)
+                    .background(Color.White, RoundedCornerShape(24.dp))
+                    .border(1.dp, Color(0x33C2C6D9), RoundedCornerShape(24.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(iconRes),
+                    contentDescription = name,
+                    tint = Color.Unspecified,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(2.dp),
+                )
+            }
         }
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(14.dp))
         if (isEditing) {
             OutlinedTextField(
                 value = name,
                 onValueChange = onNameChange,
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Nombre del producto") },
                 shape = RoundedCornerShape(12.dp),
                 colors = outlinedFieldColors(),
             )
         } else {
-            Text(name, color = NeveraChefColors.Ink, fontSize = 24.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold)
+            Text(
+                name,
+                color = NeveraChefColors.Ink,
+                fontSize = 24.sp,
+                lineHeight = 30.sp,
+                fontWeight = FontWeight.Bold
+            )
         }
         Text(subtitle, color = NeveraChefColors.Muted, fontSize = 12.sp)
+    }
+}
+
+@Composable
+private fun HeroCategoryCarouselItem(
+    selected: Boolean,
+    iconRes: org.jetbrains.compose.resources.DrawableResource,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        color = if (selected) Color.White else Color.Transparent,
+        shape = RoundedCornerShape(if (selected) 22.dp else 12.dp),
+        border = BorderStroke(
+            if (selected) 1.dp else 0.dp,
+            if (selected) Color(0x33C2C6D9) else Color.Transparent
+        ),
+        modifier = Modifier.size(85.dp),
+    ) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+            Icon(
+                painter = painterResource(iconRes),
+                contentDescription = null,
+                tint = Color.Unspecified,
+                modifier = Modifier.size(if (selected) 80.dp else 50.dp),
+            )
+        }
     }
 }
 
@@ -382,36 +500,70 @@ private fun ExpirationCard(
             .fillMaxWidth()
             .background(backgroundColor, RoundedCornerShape(16.dp))
             .border(1.dp, borderColor, RoundedCornerShape(16.dp))
-            .padding(horizontal = 14.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             modifier = Modifier
-                .size(42.dp)
-                .background(Color.White, RoundedCornerShape(12.dp))
+                .size(64.dp)
                 .border(1.dp, borderColor, RoundedCornerShape(12.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(
-                painter = painterResource(Res.drawable.ic_caducidad),
-                contentDescription = null,
-                tint = Color.Unspecified,
-                modifier = Modifier.size(24.dp),
-            )
-        }
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
-            Text("CADUCIDAD", color = titleColor, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-            Text(visibleText, color = NeveraChefColors.Ink, fontSize = 17.sp, fontWeight = FontWeight.Bold, lineHeight = 20.sp)
-            if (isEditing) {
-                val dateText = formatDisplayDate(expirationDateIso) ?: "Seleccionar fecha"
-                Text(
-                    text = dateText,
-                    color = NeveraChefColors.Blue,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.clickable { onSelectDate() }.padding(top = 2.dp),
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.White, RoundedCornerShape(11.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Image(
+                    painter = painterResource(Res.drawable.ic_expiry),
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize()
                 )
+            }
+        }
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                "CADUCIDAD",
+                color = titleColor,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    visibleText,
+                    color = NeveraChefColors.Ink,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    lineHeight = 20.sp,
+                    modifier = Modifier.weight(1f),
+                )
+                if (isEditing) {
+                    val dateText = formatDisplayDate(expirationDateIso) ?: "Seleccionar fecha"
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.clickable { onSelectDate() },
+                    ) {
+                        Text(
+                            text = dateText,
+                            color = NeveraChefColors.Blue,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                        )
+                        Icon(
+                            painter = painterResource(Res.drawable.ic_nc_pencil),
+                            contentDescription = null,
+                            tint = NeveraChefColors.Blue,
+                            modifier = Modifier.size(12.dp),
+                        )
+                    }
+                }
             }
         }
     }
@@ -423,20 +575,32 @@ private fun EditForm(
     draft: EditableProductUiState,
     onDraftChange: (EditableProductUiState) -> Unit,
 ) {
-    var amountMode by remember(draft.quantity) {
+    var amountMode by remember {
         mutableStateOf(if (isWeightQuantity(draft.quantity)) "Peso" else "Unidades")
     }
-    var unitsCount by remember(draft.quantity) {
-        mutableStateOf(parseUnitCount(draft.quantity).coerceIn(1, 99))
+    var unitsCount by remember {
+        mutableStateOf(
+            if (isWeightQuantity(draft.quantity)) 1 else parseUnitCount(draft.quantity).coerceIn(1, 999)
+        )
     }
-    val weightOptions = listOf("100g", "200g", "250g", "500g", "750g", "1kg", "2kg")
-    val selectedWeight = remember(draft.quantity, amountMode) {
-        if (amountMode == "Peso" && draft.quantity in weightOptions) draft.quantity else "500g"
+    var weightAmount by remember {
+        mutableStateOf(parseWeightQuantity(draft.quantity).amount.ifBlank { "500" })
+    }
+    var weightUnit by remember {
+        mutableStateOf(parseWeightQuantity(draft.quantity).unit.ifBlank { "g" })
     }
 
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-        Text("Cantidad", color = NeveraChefColors.Muted, fontSize = 10.sp, fontWeight = FontWeight.Medium)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+        Text(
+            "Cantidad",
+            color = NeveraChefColors.Muted,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Medium
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
             SelectChip(
                 selected = amountMode == "Unidades",
                 text = "Unidades",
@@ -452,7 +616,7 @@ private fun EditForm(
                 modifier = Modifier.weight(1f),
                 onClick = {
                     amountMode = "Peso"
-                    onDraftChange(draft.copy(quantity = selectedWeight))
+                    onDraftChange(draft.copy(quantity = formatWeightQuantity(weightAmount, weightUnit)))
                 },
             )
         }
@@ -468,74 +632,157 @@ private fun EditForm(
             ) {
                 Surface(
                     onClick = {
-                        unitsCount = (unitsCount - 1).coerceAtLeast(1)
-                        onDraftChange(draft.copy(quantity = unitsCount.toString()))
+                        val nextValue = (unitsCount - 1).coerceAtLeast(1)
+                        unitsCount = nextValue
+                        onDraftChange(draft.copy(quantity = nextValue.toString()))
                     },
                     color = Color(0xFFECE6ED),
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.size(34.dp),
                 ) {
-                    Box(contentAlignment = Alignment.Center) { Text("−", fontSize = 20.sp, fontWeight = FontWeight.SemiBold) }
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            "−",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
-                Text("$unitsCount", color = NeveraChefColors.Ink, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    "$unitsCount",
+                    color = NeveraChefColors.Ink,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold
+                )
                 Surface(
                     onClick = {
-                        unitsCount = (unitsCount + 1).coerceAtMost(99)
-                        onDraftChange(draft.copy(quantity = unitsCount.toString()))
+                        val nextValue = (unitsCount + 1).coerceAtMost(999)
+                        unitsCount = nextValue
+                        onDraftChange(draft.copy(quantity = nextValue.toString()))
                     },
                     color = NeveraChefColors.Blue,
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.size(34.dp),
                 ) {
-                    Box(contentAlignment = Alignment.Center) { Text("+", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold) }
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            "+",
+                            color = Color.White,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
             }
         } else {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                weightOptions.take(4).forEach { option ->
-                    SelectChip(
-                        selected = draft.quantity == option,
-                        text = option,
-                        modifier = Modifier.weight(1f),
-                        onClick = { onDraftChange(draft.copy(quantity = option)) },
-                    )
-                }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                weightOptions.drop(4).forEach { option ->
-                    SelectChip(
-                        selected = draft.quantity == option,
-                        text = option,
-                        modifier = Modifier.weight(1f),
-                        onClick = { onDraftChange(draft.copy(quantity = option)) },
-                    )
-                }
-                Spacer(Modifier.weight(1f))
-            }
-        }
-
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            listOf(PantryLocation.FRIDGE, PantryLocation.PANTRY, PantryLocation.FREEZER).forEach { location ->
-                LocationSelectChip(
-                    selected = draft.location == location,
-                    iconRes = locationIconRes(location),
-                    text = location.label,
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.Bottom,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                OutlinedTextField(
+                    value = weightAmount,
+                    onValueChange = { typed ->
+                        val nextAmount = typed.filter(Char::isDigit).take(4)
+                        weightAmount = nextAmount
+                        onDraftChange(
+                            draft.copy(
+                                quantity = formatWeightQuantity(
+                                    nextAmount,
+                                    weightUnit,
+                                ),
+                            ),
+                        )
+                    },
                     modifier = Modifier.weight(1f),
-                    onClick = { onDraftChange(draft.copy(location = location)) },
+                    singleLine = true,
+                    label = { Text("Peso") },
+                    placeholder = { Text("250") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = outlinedFieldColors(),
                 )
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.width(78.dp)
+                ) {
+                    listOf("g", "kg").forEach { unit ->
+                        val selected = weightUnit == unit
+                        SelectChip(
+                            selected = selected,
+                            text = unit,
+                            modifier = Modifier.fillMaxWidth(),
+                            onClick = {
+                                weightUnit = unit
+                                val nextAmount = weightAmount.ifBlank { if (unit == "kg") "1" else "500" }
+                                onDraftChange(
+                                    draft.copy(
+                                        quantity = formatWeightQuantity(
+                                            nextAmount,
+                                            unit,
+                                        ),
+                                    ),
+                                )
+                            },
+                        )
+                    }
+                }
             }
-        }
-
-        Text("Categoría", color = NeveraChefColors.Muted, fontSize = 10.sp, fontWeight = FontWeight.Medium)
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            items(allCategoryOptions) { option ->
-                CategorySelectCard(
-                    selected = draft.category == option.key,
-                    text = option.label,
-                    iconRes = option.iconRes,
-                    modifier = Modifier.size(width = 72.dp, height = 62.dp),
-                    onClick = { onDraftChange(draft.copy(category = option.key)) },
-                )
+            Spacer(modifier = Modifier.height(20.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                listOf(
+                    PantryLocation.FRIDGE,
+                    PantryLocation.PANTRY,
+                    PantryLocation.FREEZER
+                ).forEach { location ->
+                    LocationSelectChip(
+                        selected = draft.location == location,
+                        iconRes = locationIconRes(location),
+                        text = location.label,
+                        modifier = Modifier.weight(1f),
+                        onClick = { onDraftChange(draft.copy(location = location)) },
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(20.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                val quickWeights = listOf("250g", "500g", "1kg", "2kg")
+                quickWeights.chunked(2).forEach { rowWeights ->
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        rowWeights.forEach { quick ->
+                            SelectChip(
+                                selected = quick == "$weightAmount$weightUnit",
+                                text = quick,
+                                modifier = Modifier.weight(1f),
+                                onClick = {
+                                    val nextAmount = when (quick) {
+                                        "250g" -> "250"
+                                        "500g" -> "500"
+                                        "1kg" -> "1"
+                                        "2kg" -> "2"
+                                        else -> weightAmount
+                                    }
+                                    val nextUnit = when (quick) {
+                                        "1kg", "2kg" -> "kg"
+                                        else -> "g"
+                                    }
+                                    weightAmount = nextAmount
+                                    weightUnit = nextUnit
+                                    amountMode = "Peso"
+                                    onDraftChange(
+                                        draft.copy(quantity = formatWeightQuantity(nextAmount, nextUnit))
+                                    )
+                                },
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -560,7 +807,10 @@ private fun ActionRow(
             Text("Guardar", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
         }
     } else {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
             Surface(
                 onClick = onGenerateRecipe,
                 modifier = Modifier
@@ -569,9 +819,21 @@ private fun ActionRow(
                 color = Color(0xFF004BCA),
                 shape = RoundedCornerShape(12.dp),
             ) {
-                Row(horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                    Icon(painterResource(Res.drawable.ic_nc_chef_hat), contentDescription = null, tint = Color.White)
-                    Text("  Receta rápida", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        painterResource(Res.drawable.ic_nc_chef_hat),
+                        contentDescription = null,
+                        tint = Color.White
+                    )
+                    Text(
+                        "  Receta rápida",
+                        color = Color.White,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 16.sp
+                    )
                 }
             }
         }
@@ -580,13 +842,25 @@ private fun ActionRow(
 
 @Composable
 private fun InfoGrid(food: PantryFoodUi) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-        InfoCard("Ubicación", food.location.label, Modifier.weight(1f))
-        InfoCard("Cantidad", food.quantity, Modifier.weight(1f))
-    }
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-        InfoCard("Categoría", food.category, Modifier.weight(1f))
-        InfoCard("Caducidad", formatDisplayDate(food.expiryDateIso) ?: (food.expiryLabel ?: "Sin fecha"), Modifier.weight(1f))
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            InfoCard("Ubicación", food.location.label, Modifier.weight(1f))
+            InfoCard("Cantidad", food.quantity, Modifier.weight(1f))
+        }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            InfoCard("Categoría", food.category, Modifier.weight(1f))
+            InfoCard(
+                "Caducidad",
+                formatDisplayDate(food.expiryDateIso) ?: (food.expiryLabel ?: "Sin fecha"),
+                Modifier.weight(1f)
+            )
+        }
     }
 }
 
@@ -656,13 +930,18 @@ private fun LocationSelectChip(
 private fun InfoCard(label: String, value: String, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
-            .height(82.dp)
+            .height(90.dp)
             .background(Color(0xFFF8F2F9), RoundedCornerShape(16.dp))
             .border(1.dp, Color(0x33C2C6D9), RoundedCornerShape(16.dp))
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(5.dp),
+            .padding(horizontal = 14.dp, vertical = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Text(label, color = NeveraChefColors.Muted, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+        Text(
+            label,
+            color = NeveraChefColors.Muted,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium
+        )
         Text(value, color = NeveraChefColors.Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
     }
 }
@@ -677,23 +956,21 @@ private fun CategorySelectCard(
 ) {
     Surface(
         onClick = onClick,
-        color = if (selected) Color(0xFFEAF2FF) else Color(0xFFF8F2F9),
+        color = Color.Transparent,
         shape = RoundedCornerShape(12.dp),
-        border = BorderStroke(if (selected) 1.6.dp else 1.dp, if (selected) NeveraChefColors.Blue else Color(0x33C2C6D9)),
-        modifier = modifier.height(62.dp),
+        border = BorderStroke(
+            if (selected) 1.6.dp else 0.dp,
+            if (selected) NeveraChefColors.Blue else Color.Transparent
+        ),
+        modifier = modifier,
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(vertical = 4.dp, horizontal = 3.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween,
-        ) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
             Icon(
                 painter = painterResource(iconRes),
                 contentDescription = null,
                 tint = Color.Unspecified,
-                modifier = Modifier.size(22.dp),
+                modifier = Modifier.fillMaxSize().padding(if (selected) 4.dp else 2.dp),
             )
-            Text(text, color = if (selected) NeveraChefColors.Blue else NeveraChefColors.Ink, fontSize = 9.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }
@@ -709,6 +986,34 @@ private fun outlinedFieldColors() = OutlinedTextFieldDefaults.colors(
 private fun parseUnitCount(quantity: String): Int {
     val digits = quantity.trim().takeWhile { it.isDigit() }
     return digits.toIntOrNull() ?: 1
+}
+
+private data class WeightQuantity(
+    val amount: String,
+    val unit: String,
+)
+
+private fun parseWeightQuantity(quantity: String): WeightQuantity {
+    val normalized = quantity.trim().lowercase().replace(" ", "")
+    return when {
+        normalized.endsWith("kg") -> WeightQuantity(
+            amount = normalized.removeSuffix("kg").ifBlank { "1" },
+            unit = "kg",
+        )
+
+        normalized.endsWith("g") -> WeightQuantity(
+            amount = normalized.removeSuffix("g").ifBlank { "500" },
+            unit = "g",
+        )
+
+        else -> WeightQuantity(amount = "500", unit = "g")
+    }
+}
+
+private fun formatWeightQuantity(amount: String, unit: String): String {
+    val safeUnit = if (unit == "kg") "kg" else "g"
+    val safeAmount = amount.ifBlank { if (safeUnit == "kg") "1" else "500" }
+    return "$safeAmount $safeUnit"
 }
 
 private fun isWeightQuantity(quantity: String): Boolean {
@@ -773,10 +1078,20 @@ private fun normalizeCategoryKey(category: String): String {
 }
 
 private fun labelForCategoryKey(key: String): String =
-    allCategoryOptions.firstOrNull { it.key == key }?.label ?: key.replace("_", " ").replaceFirstChar { it.uppercase() }
+    allCategoryOptions.firstOrNull { it.key == key }?.label ?: key.replace("_", " ")
+        .replaceFirstChar { it.uppercase() }
+
+private fun categoryIconResByKey(key: String) =
+    allCategoryOptions.firstOrNull { it.key == key }?.iconRes ?: Res.drawable.ic_cat_vegetables
 
 private fun locationIconRes(location: PantryLocation) = when (location) {
     PantryLocation.FRIDGE -> Res.drawable.ic_nc_fridge
     PantryLocation.PANTRY -> Res.drawable.ic_nc_pantry
-    PantryLocation.FREEZER -> Res.drawable.ic_cat_frozen
+    PantryLocation.FREEZER -> Res.drawable.ic_nc_freezer
+}
+
+private fun heroSubtitle(quantity: String, category: String, location: PantryLocation): String {
+    return listOf(quantity.trim(), category.trim(), location.label.trim())
+        .filter { it.isNotBlank() }
+        .joinToString(" · ")
 }

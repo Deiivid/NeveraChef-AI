@@ -18,7 +18,7 @@ Migrate visual designs from HTML/Stitch/Pencil/Figma to Kotlin Multiplatform Com
 
 Translate the reference using exact values where possible:
 
-- colors
+- colors (Map reference hex codes to project's `Theme.kt` design tokens).
 - spacing
 - typography
 - radius
@@ -39,6 +39,7 @@ Prefer:
 - Switch
 - Button/TextButton
 - simple custom composables
+- Use KMP shared resources (`Res.*`) inside `commonMain`. Never use platform-specific resources (`R.*`).
 
 Avoid unnecessary abstraction.
 

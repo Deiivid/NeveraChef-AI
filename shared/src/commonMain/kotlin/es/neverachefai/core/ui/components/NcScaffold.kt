@@ -5,10 +5,10 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,9 +27,8 @@ import androidx.compose.ui.unit.dp
 import es.neverachefai.core.designsystem.NeveraChefColors
 import es.neverachefai.feature.navigation.MainTab
 import neverachefai.shared.generated.resources.Res
-import neverachefai.shared.generated.resources.ic_nc_chef_hat
 import neverachefai.shared.generated.resources.ic_nc_fridge
-import neverachefai.shared.generated.resources.ic_nc_scan
+import neverachefai.shared.generated.resources.ic_nc_chef_hat
 import neverachefai.shared.generated.resources.ic_nc_settings
 import neverachefai.shared.generated.resources.ic_nc_shopping_basket
 import org.jetbrains.compose.resources.DrawableResource
@@ -135,7 +134,12 @@ fun NeveraMainScaffold(
 ) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        bottomBar = { NeveraBottomNavigation(selectedTab = selectedTab, onTabSelected = onTabSelected) },
+        bottomBar = {
+            NeveraBottomNavigation(
+                selectedTab = selectedTab,
+                onTabSelected = onTabSelected
+            )
+        },
     ) { padding ->
         Box(
             modifier = Modifier
@@ -172,7 +176,11 @@ fun ScreenCard(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text(description, color = NeveraChefColors.Muted, style = MaterialTheme.typography.bodyMedium)
+            Text(
+                description,
+                color = NeveraChefColors.Muted,
+                style = MaterialTheme.typography.bodyMedium
+            )
             actions?.invoke()
         }
     }
