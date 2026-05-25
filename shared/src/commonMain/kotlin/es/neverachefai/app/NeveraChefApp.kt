@@ -5,6 +5,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import es.neverachefai.core.persistence.LocalAppContentStore
+import es.neverachefai.core.persistence.ShoppingItemRecord
 import es.neverachefai.core.preferences.AppPreferences
 import es.neverachefai.core.ui.components.NeveraMainScaffold
 import es.neverachefai.feature.navigation.MainTab
@@ -22,7 +24,9 @@ import es.neverachefai.feature.recipes.ui.RecipeDetailScreen
 import es.neverachefai.feature.recipes.ui.RecipeGenerationScreen
 import es.neverachefai.feature.recipes.ui.RecipeResultsScreen
 import es.neverachefai.feature.settings.ui.SettingsScreen
-import es.neverachefai.feature.shopping.ui.ShoppingCartScreen
+import es.neverachefai.feature.shopping.ui.AddShoppingProductScreen
+import es.neverachefai.feature.shopping.ui.AddShoppingProductUiState
+import es.neverachefai.feature.shopping.ui.ShoppingListScreen
 
 @Composable
 fun NeveraChefApp(
@@ -37,19 +41,13 @@ fun NeveraChefApp(
     var pantryFlow by remember { mutableStateOf(PantryFlow.LIST) }
     var selectedFood by remember { mutableStateOf<PantryFoodUi?>(null) }
     var recipesFlow by remember { mutableStateOf(RecipesFlow.GENERATE) }
+    var showAddShoppingProduct by remember { mutableStateOf(false) }
+    var addShoppingState by remember { mutableStateOf(AddShoppingProductUiState()) }
 
     val completeOnboarding: () -> Unit = {
         AppPreferences.setOnboardingSeen(true)
         currentTab = MainTab.PANTRY
         rootFlow = RootFlow.MAIN
-    }
-
-    val openOnboardingFromSettings: () -> Unit = {
-        rootFlow = RootFlow.ONBOARDING
-        currentTab = MainTab.PANTRY
-        pantryFlow = PantryFlow.LIST
-        selectedFood = null
-        recipesFlow = RecipesFlow.GENERATE
     }
 
     val resetAppState: () -> Unit = {
@@ -59,6 +57,8 @@ fun NeveraChefApp(
         pantryFlow = PantryFlow.LIST
         selectedFood = null
         recipesFlow = RecipesFlow.GENERATE
+        showAddShoppingProduct = false
+        addShoppingState = AddShoppingProductUiState()
     }
 
     when (rootFlow) {
@@ -85,6 +85,26 @@ fun NeveraChefApp(
                         PantryFlow.DETAIL -> FoodDetailScreen(
                             food = selectedFood,
                             onBack = { pantryFlow = PantryFlow.LIST },
+                            onSaveEditedFood = { updated ->
+                                selectedFood = updated
+                                val current = LocalAppContentStore.loadPantryFoods().toMutableList()
+                                val index = current.indexOfFirst { it.id == updated.id }
+                                if (index >= 0) {
+                                    val existing = current[index]
+                                    current[index] = existing.copy(
+                                        name = updated.name,
+                                        quantity = updated.quantity,
+                                        category = updated.category,
+                                        locationKey = when (updated.location) {
+                                            es.neverachefai.feature.pantry.ui.PantryLocation.FRIDGE -> "fridge"
+                                            es.neverachefai.feature.pantry.ui.PantryLocation.PANTRY -> "pantry"
+                                            es.neverachefai.feature.pantry.ui.PantryLocation.FREEZER -> "freezer"
+                                        },
+                                        expiryDateIso = updated.expiryDateIso,
+                                    )
+                                    LocalAppContentStore.savePantryFoods(current)
+                                }
+                            },
                             onGenerateRecipe = {
                                 currentTab = MainTab.RECIPES
                                 recipesFlow = RecipesFlow.GENERATE
@@ -106,17 +126,111 @@ fun NeveraChefApp(
                         )
                     }
 
-                    MainTab.SHOPPING -> ShoppingCartScreen()
+                    MainTab.SHOPPING -> if (showAddShoppingProduct) {
+                        AddShoppingProductScreen(
+                            state = addShoppingState,
+                            onModeSelected = { addShoppingState = addShoppingState.copy(selectedMode = it) },
+                            onProductNameChange = { addShoppingState = addShoppingState.copy(productName = it) },
+                            onQuantityChange = { addShoppingState = addShoppingState.copy(quantity = it) },
+                            onDestinationChange = { addShoppingState = addShoppingState.copy(destination = it) },
+                            onVoiceClick = {},
+                            onCameraClick = {},
+                            onAddToShoppingListClick = {
+                                val itemName = addShoppingState.productName.trim()
+                                if (itemName.isNotEmpty()) {
+                                    val iconKey = addShoppingState.destination.toCategoryIconKey()
+                                    val destinationKey = iconKey.toDestinationKey()
+                                    val parsedQuantity = parseQuantityInput(addShoppingState.quantity)
+                                    val currentItems = LocalAppContentStore.loadShoppingItems().toMutableList()
+                                    currentItems += ShoppingItemRecord(
+                                        id = "shopping_${currentItems.size + 1}_${itemName.lowercase().replace(" ", "_")}",
+                                        name = itemName,
+                                        quantity = parsedQuantity.displayLabel,
+                                        quantityValue = parsedQuantity.value,
+                                        quantityUnit = parsedQuantity.unit,
+                                        checked = false,
+                                        category = iconKey,
+                                        destinationKey = destinationKey,
+                                        iconKey = iconKey,
+                                    )
+                                    LocalAppContentStore.saveShoppingItems(currentItems)
+                                }
+                                addShoppingState = AddShoppingProductUiState()
+                                showAddShoppingProduct = false
+                            },
+                        )
+                    } else {
+                        ShoppingListScreen(
+                            onAddProductClick = { showAddShoppingProduct = true },
+                        )
+                    }
                     MainTab.SETTINGS -> SettingsScreen(
                         cameraPermissionGranted = cameraPermissionGranted,
                         microphonePermissionGranted = microphonePermissionGranted,
                         onRequestCameraPermission = onRequestCameraPermission,
                         onRequestMicrophonePermission = onRequestMicrophonePermission,
-                        onOpenOnboarding = openOnboardingFromSettings,
                         onReset = resetAppState,
                     )
                 }
             },
         )
     }
+}
+
+private fun String.toCategoryIconKey(): String {
+    return when (lowercase()) {
+        "frutas" -> "fruits"
+        "verduras" -> "vegetables"
+        "carne" -> "meat"
+        "pescado" -> "fish"
+        "marisco" -> "seafood"
+        "pan" -> "bread"
+        "leche" -> "milk"
+        "yogures" -> "yogurts"
+        "queso" -> "cheese"
+        "huevos" -> "eggs"
+        "pasta/arroz" -> "grains"
+        "conservas" -> "canned_food"
+        "congelados" -> "frozen"
+        "agua" -> "water"
+        "refrescos" -> "soft_drinks"
+        "zumo" -> "juice"
+        "vino" -> "wine"
+        "cerveza" -> "beer"
+        "cafe/te" -> "coffee_tea"
+        "snacks" -> "snacks"
+        "dulces" -> "sweets"
+        "salsas" -> "sauces"
+        "aceite/vinagre" -> "oil_vinegar"
+        "platos listos" -> "ready_meals"
+        "limpieza" -> "cleaning"
+        "higiene" -> "hygiene"
+        "mascotas" -> "pets"
+        else -> "other"
+    }
+}
+
+private fun String.toDestinationKey(): String {
+    return when (this) {
+        "frozen", "fish", "seafood" -> "freezer"
+        "milk", "yogurts", "cheese", "fruits", "vegetables", "eggs", "juice", "soft_drinks" -> "fridge"
+        else -> "pantry"
+    }
+}
+
+private data class ParsedQuantity(val value: String, val unit: String, val displayLabel: String)
+
+private fun parseQuantityInput(rawValue: String): ParsedQuantity {
+    val normalized = rawValue.trim()
+    if (normalized.isBlank()) return ParsedQuantity("1", "unidades", "1 unidades")
+
+    val parts = normalized.split(" ").filter { it.isNotBlank() }
+    if (parts.size >= 2) {
+        val value = parts.first()
+        val unit = parts.drop(1).joinToString(" ")
+        return ParsedQuantity(value, unit, "$value $unit")
+    }
+
+    val numericValue = normalized.toIntOrNull()?.coerceAtLeast(1)?.toString() ?: "1"
+    return ParsedQuantity(numericValue, "unidades", "$numericValue unidades")
 }
