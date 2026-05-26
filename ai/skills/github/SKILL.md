@@ -1,113 +1,56 @@
 # GitHub PR Workflow Skill
 
-## Purpose
-
-Use this skill when the user asks Codex to prepare commits, branches, pushes, pull requests, GitHub automation, or PR descriptions.
-
-This skill is reusable across repositories.
-
-## Activation
-
-Use this skill only when the task explicitly involves:
-
-- GitHub.
-- Pull requests.
-- Branch creation.
-- Commit creation.
-- Push operations.
-- PR templates.
-- GitHub CLI.
-- Remote repository operations.
-
-Do not use this skill for normal local code edits.
+Use this skill only when the user explicitly asks for branches, commits, pushes, pull requests, GitHub CLI, remote repository work or PR descriptions.
 
 ## Rules
 
-- Use GitHub CLI only when explicitly requested.
 - Do not create commits unless requested.
+- Do not create branches unless requested.
 - Do not push unless requested.
-- Do not open a PR unless requested.
-- Do not force push.
-- Do not rewrite history.
-- Do not delete branches.
+- Do not open PRs unless requested.
+- Do not force push, rewrite history or delete branches unless explicitly requested.
 - Do not stage unrelated files.
-- Do not stage secrets, local caches, build outputs, generated binaries, `.env` files, signing files, keystores, or tokens.
-- Never expose secrets in PR descriptions, commits, logs, or summaries.
+- Do not stage secrets, caches, build outputs, generated binaries, `.env` files, signing files, keystores or tokens.
+- Never expose secrets in PR descriptions, commits, logs or summaries.
 
-## Branch Rules
+## Branches
 
-Use short descriptive branch names.
-
-Preferred formats:
-
-- feature/<short-description>
-- fix/<short-description>
-- refactor/<short-description>
-- chore/<short-description>
-- docs/<short-description>
-- test/<short-description>
-
-Use project-specific prefixes only if the repository already uses them.
+Use short descriptive names. Prefer the repository convention if one exists.
 
 Examples:
 
-- feature/login-ui
-- fix/recipe-detail-crash
-- refactor/settings-state
-- chore/update-ci-validation
+- `feature/login-ui`
+- `fix/recipe-detail-crash`
+- `refactor/settings-state`
+- `docs/agent-instructions`
 
-## Commit Rules
+## Commits
 
 When commits are requested:
 
 - Keep commits atomic.
 - Include only task-related files.
-- Use semantic commit messages when possible.
-- Do not commit if validation failed unless the user explicitly requests it.
-
-Preferred commit format:
-
-- feat(scope): short description
-- fix(scope): short description
-- refactor(scope): short description
-- chore(scope): short description
-- docs(scope): short description
-- test(scope): short description
+- Use semantic commit messages when practical.
+- Do not commit with failing validation unless the user explicitly asks.
 
 Examples:
 
-- feat(ui): implement recipe detail layout
-- fix(data): handle empty recipe response
-- refactor(auth): simplify session state
-- test(shared): add mapper coverage
+- `feat(ui): implement recipe detail layout`
+- `fix(data): handle empty recipe response`
+- `refactor(settings): simplify state`
+- `docs(ai): compact agent instructions`
 
 ## Validation Before PR
 
 Before opening a PR:
 
-- Run the most specific validation command available.
-- Prefer existing project validation commands.
-- Do not invent validation results.
-- If validation fails, stop and report the failure.
-- Do not open a PR with failing validation unless explicitly requested.
-
-Common validation commands:
-
-- ./gradlew test
-- ./gradlew check
-- ./gradlew lint
-- ./gradlew detekt
-- ./gradlew assembleDebug
-- ./gradlew :app:assembleDebug
-- ./gradlew :shared:compileKotlinAndroid
-- ./gradlew :composeApp:assembleDebug
+1. Run the most specific validation command from `ai/VALIDATION_ANDROID.md`.
+2. Stop if validation fails unless the user explicitly asks to continue.
+3. Do not invent validation results.
 
 ## PR Description
 
-Keep PR descriptions short and factual.
-
-Use this format:
-
+```text
 Title: <type>: <short feature name>
 
 Description:
@@ -119,46 +62,25 @@ Validation:
 
 Risks:
 - <real risks or None>
+```
 
-Notes:
-- <optional, maximum 2 bullets>
+## Safety Checklist
 
-## PR Safety Checklist
-
-Before creating the PR, verify:
-
-- No unrelated files are staged.
-- No secrets are included.
-- No local database/cache/build files are staged.
-- No temporary TODO/FIXME/debug code was added.
-- No Android-only imports leaked into KMP shared code.
-- No public API was changed unless required.
+- No unrelated files staged.
+- No secrets included.
+- No local cache/build/generated files staged.
+- No temporary debug code added.
+- No Android-only imports leaked into shared code.
+- No public API changed unless required.
 - Validation result is real.
 
-## Silent Mode
+## Output
 
-Do not narrate Git operations step by step.
-
-Do not say:
-
-- I will create a branch.
-- I am checking git status.
-- I am preparing the PR.
-- I found these files.
-- I will now push.
-
-Only output when:
-
-- A blocking question is required.
-- The operation is blocked.
-- The operation is complete.
-
-Final output:
-
+```text
 Done.
 
 Branch:
-- <branch-name>
+- <branch-name or Not created>
 
 Commit:
 - <commit-hash or Not created>
@@ -171,3 +93,4 @@ Validation:
 
 Risks:
 - <real risks or None>
+```

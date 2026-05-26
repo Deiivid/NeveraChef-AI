@@ -71,6 +71,7 @@ Rules:
 
 - Do not create empty folders just to match an ideal structure.
 - Add `domain/repository` or `domain/usecase` only when abstraction or business logic is useful.
+- `core/persistence` and `core/preferences` must not be accessed directly from Composables.
 - Keep feature code grouped by product area.
 - Keep components in the feature until reuse is real.
 
@@ -125,7 +126,7 @@ Do not create `Route`, `State`, `Event`, `Effect` or `ViewModel` files for scree
 - UI state must be immutable and render-ready.
 - Use events for user intent, not direct mutation from UI.
 - Use effects only for one-off actions such as navigation, snackbar, toast or permission prompts.
-- Collect effects with lifecycle awareness where available.
+- Collect effects through lifecycle-aware collection where available.
 - Keep persistence, preferences, network and AI provider calls outside Composables.
 - Keep design tokens and primitives in `core/designsystem/`.
 
@@ -170,6 +171,7 @@ AI:
 | Mappers | Input-output unit tests |
 | State holders/ViewModels | Event/state Flow tests |
 | Repositories | Unit or integration tests depending on storage |
+| AI provider/repository mapping | Contract tests or mapper unit tests with fake providers |
 
 Rules:
 

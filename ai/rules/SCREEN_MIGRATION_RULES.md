@@ -1,52 +1,49 @@
-# Screen migration rules
+# Screen Migration Rules
 
-## Goal
+Use these rules when migrating visual designs from HTML, Stitch, Pencil, Figma or screenshots to Kotlin Multiplatform Compose.
 
-Migrate visual designs from HTML/Stitch/Pencil/Figma to Kotlin Multiplatform Compose.
-
-## Hard rules
+## Hard Rules
 
 - Do not redesign.
 - Do not invent visual hierarchy.
 - Do not change unrelated screens.
-- Do not change app architecture.
-- Do not add new dependencies unless explicitly requested.
-- Do not replace existing navigation.
-- Keep behavior and callbacks intact.
+- Do not change architecture, navigation, callbacks or behaviour unless required by the task.
+- Do not add dependencies unless explicitly requested.
+- Use KMP shared resources (`Res.*`) inside `commonMain`; do not use platform `R.*`.
 
-## Visual fidelity
+## Visual Fidelity
 
-Translate the reference using exact values where possible:
+Prioritize:
 
-- colors (Map reference hex codes to project's `Theme.kt` design tokens).
-- spacing
-- typography
-- radius
-- borders
-- card elevation/shadow approximation
-- selected/unselected states
-- bottom navigation overlap
-- status/top bar visual treatment
+1. layout hierarchy
+2. spacing
+3. typography
+4. colors
+5. radius/borders
+6. selected/unselected states
+7. bottom/status/top bar treatment
+8. elevation/shadow approximation
 
-## Compose implementation
+Map reference values to project design tokens when possible. Use exact values only when no suitable token exists or visual parity requires it.
 
-Prefer:
+## Compose
 
-- Column
-- Row
-- Box
-- Text
-- Switch
-- Button/TextButton
-- simple custom composables
-- Use KMP shared resources (`Res.*`) inside `commonMain`. Never use platform-specific resources (`R.*`).
+Prefer simple Compose primitives and existing project components:
+
+- `Column`
+- `Row`
+- `Box`
+- `Text`
+- `Icon`
+- `Image`
+- `Switch`
+- `Button` / `TextButton`
 
 Avoid unnecessary abstraction.
 
 ## Output
 
-Keep final answer short:
-
+```text
 Files changed:
 - ...
 
@@ -55,3 +52,4 @@ Validation:
 
 Notes:
 - ...
+```

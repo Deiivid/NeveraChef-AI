@@ -47,7 +47,7 @@ Shopping item:
 | `category` | Product category when available |
 | `amount` | Number of units to buy |
 | `weight` | Weight/package size when available |
-| `checked` | Bought/selected for finalization |
+| `checked` | Persisted bought/selected state used for finalization |
 
 ## Product Invariants
 
@@ -59,7 +59,7 @@ Shopping item:
 - UI must not lose user input during recomposition.
 - Product labels must not imply all inventory goes to the fridge.
 
-Recommended UI state split:
+Example temporary UI input state split, not a domain model:
 
 ```kotlin
 var amount by mutableStateOf("1")
@@ -93,6 +93,8 @@ Forbidden behaviour:
 - Do not move unchecked items into inventory.
 - Do not clear the whole shopping list blindly.
 - Do not label finalization as `Añadir a nevera`.
+- Do not run finalization multiple times because of recomposition or repeated effect collection.
+- Do not invent inventory merge/deduplication rules unless explicitly defined.
 
 Preferred labels:
 
@@ -106,13 +108,16 @@ Preferred labels:
 - Inventory should persist locally when persistence exists for the feature.
 - Inventory must distinguish `Nevera`, `Despensa` and `Congelador`.
 - Moving or adding products must preserve category, amount, weight and location when available.
+- Inventory merge/deduplication behaviour is undefined unless explicitly requested.
 - UI filters/tabs must not mutate stored product data.
 - Visual labels must match product location.
 
 ## Shopping Rules
 
 - Shopping items should persist locally when persistence exists for the feature.
-- `checked` means bought/selected, not deleted.
+- `checked` is persisted shopping state, not transient UI state.
+- `checked` means bought/selected for finalization, not deleted.
+- `checked` should survive app restart when shopping persistence exists.
 - Finalization decides what happens to checked items.
 - Unchecked items remain in the shopping list.
 - Shopping state should survive app restart when persistence is available.
@@ -128,6 +133,16 @@ When migrating screens from HTML, Stitch, Pencil, Figma or screenshots:
 - Do not change shopping finalization behaviour.
 - Do not introduce labels that imply every product goes to the fridge.
 
+## Undefined Behaviour
+
+Do not invent behaviour for:
+
+- inventory merge/deduplication
+- product category normalization
+- default storage location for new or finalized products
+- automatic expiration dates
+- remote sync or account behaviour
+
 ## Product Checklist
 
 Before completing product-related work, verify:
@@ -135,7 +150,10 @@ Before completing product-related work, verify:
 - Amount and weight remain independent.
 - Locations support `Nevera`, `Despensa` and `Congelador`.
 - Checked shopping items can be finalized.
+- Checked state is persisted when shopping persistence exists.
+- Finalization is not triggered by recomposition.
 - Unchecked shopping items remain pending.
 - Required persistence is preserved.
 - UI labels do not narrow inventory to only fridge.
 - No product data is silently lost.
+- Undefined behaviours were not invented.
