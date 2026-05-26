@@ -38,7 +38,7 @@
 |---|---|
 | Language | Kotlin-first. |
 | Multiplatform | Kotlin Multiplatform. Shared code lives in `shared/`. |
-| UI | Compose Multiplatform for shared UI and Android UI. |
+| **UI** | Compose Multiplatform for shared UI and Android UI (Material3) other things forbidden |
 | iOS host | Swift / SwiftUI only for iOS platform integration in `iosApp/`. |
 | Build | Gradle Kotlin DSL + Android Gradle Plugin. |
 | Async/state | Coroutines + Flow / StateFlow. |
