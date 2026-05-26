@@ -1,85 +1,63 @@
-# NeveraChef AI — Product Context
+# NeveraChef AI - Product Context
 
-Use this file when an AI agent, Codex task or developer needs product/domain context for NeveraChef AI.
+> **Version:** 2026-05-26  
+> **Scope:** Product/domain rules agents must preserve.
 
-This file explains what the app does and which product rules must not be broken. It is not an architecture guide.
+Use this file when a task touches product behaviour, terminology, screens or data semantics. It is not an architecture guide.
 
----
-
-## Product overview
+## Product
 
 NeveraChef AI is a food inventory and shopping assistant.
 
-Its purpose is to help users:
+It helps users:
 
 - track food stored at home
-- manage pantry/fridge/freezer inventory
-- build a shopping list
-- mark products as bought
+- manage fridge, pantry and freezer inventory
+- build and complete a shopping list
 - move bought products into inventory
-- reduce forgotten or duplicated food purchases
+- reduce forgotten or duplicated purchases
 
----
-
-## Core storage locations
+## Storage Locations
 
 | Location | Meaning |
 |---|---|
-| Nevera | Fridge items. Products that need refrigeration. |
-| Despensa | Pantry items. Products stored at room temperature. |
-| Congelador | Frozen items. Products stored in the freezer. |
+| `Nevera` | Fridge items that need refrigeration |
+| `Despensa` | Pantry items stored at room temperature |
+| `Congelador` | Frozen items |
 
-Products may belong to any of these locations. Do not assume every product goes to `Nevera`.
+Do not assume every product goes to `Nevera`.
 
----
+## Core Entities
 
-## Core entities
-
-### Product / inventory item
-
-A product added manually or moved from shopping list into inventory.
-
-Expected fields:
+Inventory product:
 
 | Field | Meaning |
 |---|---|
-| `name` | Product name. |
-| `category` | Product category. |
-| `amount` | Number of units. |
-| `weight` | Product weight or package size. |
-| `location` | Nevera, Despensa or Congelador. |
+| `name` | Product name |
+| `category` | Product category |
+| `amount` | Number of units |
+| `weight` | Weight or package size |
+| `location` | `Nevera`, `Despensa` or `Congelador` |
 
-### Shopping item
-
-A product planned for purchase.
-
-Expected fields:
+Shopping item:
 
 | Field | Meaning |
 |---|---|
-| `name` | Product name. |
-| `category` | Product category when available. |
-| `amount` | Number of units to buy. |
-| `weight` | Weight/package size when available. |
-| `checked` | Whether the product has already been bought. |
+| `name` | Product name |
+| `category` | Product category when available |
+| `amount` | Number of units to buy |
+| `weight` | Weight/package size when available |
+| `checked` | Bought/selected for finalization |
 
----
+## Product Invariants
 
-## Amount vs weight
-
-Amount and weight are different concepts.
-
-| Concept | Meaning | Example |
-|---|---|---|
-| Amount | Number of units. | `3` apples, `2` milk bottles. |
-| Weight | Weight or package size. | `250g`, `500g`, `1kg`. |
-
-Rules:
-
-- Pressing `+` or `-` in amount must not modify weight.
-- Selecting `250g`, `500g`, `1kg`, etc. must not modify amount.
-- Do not store broken labels such as `3 kg` when the user only increased amount.
-- UI must make selected category and selected location visible after tapping.
+- Amount and weight are independent.
+- `+` / `-` changes amount only.
+- Selecting `250g`, `500g`, `1kg`, etc. changes weight only.
+- Category selection must remain visible after tapping.
+- Location selection must remain visible after tapping.
+- UI must not lose user input during recomposition.
+- Product labels must not imply all inventory goes to the fridge.
 
 Recommended UI state split:
 
@@ -89,129 +67,75 @@ var weightAmount by mutableStateOf("")
 var weightUnit by mutableStateOf("")
 ```
 
----
-
-## Core product workflow
+## Core Workflow
 
 ```text
-Add product manually
-        ↓
-Store in local inventory
-
-Add product to shopping list
-        ↓
-Store in local shopping list
-
-Mark shopping product as bought
-        ↓
-checked = true
-
-Finalize shopping list
-        ↓
-checked items move to inventory
-unchecked items remain in shopping list
+Add product manually -> store in inventory
+Add product to shopping list -> store in shopping list
+Mark shopping item as bought -> checked = true
+Finalize shopping list -> checked items move to inventory; unchecked items stay pending
 ```
 
----
-
-## Shopping list finalization
-
-Finalizing the shopping list must not clear everything blindly.
+## Shopping Finalization
 
 Correct behaviour:
 
-1. Load checked shopping list items.
+1. Load checked shopping items.
 2. Convert checked items into inventory items.
 3. Insert converted items into local inventory.
-4. Remove or mark completed only checked shopping items.
+4. Remove or complete only checked shopping items.
 5. Keep unchecked shopping items pending.
 6. Use a transaction when supported.
 
 Forbidden behaviour:
 
-- Do not delete unchecked shopping items during finalization.
+- Do not delete unchecked shopping items.
 - Do not move unchecked items into inventory.
 - Do not clear the whole shopping list blindly.
-- Do not label finalization as `Añadir a nevera`, because products may go to nevera, despensa or congelador.
+- Do not label finalization as `Añadir a nevera`.
 
-Recommended labels:
+Preferred labels:
 
 | Label | Use |
 |---|---|
-| `Finalizar compra` | Complete checked shopping items and move them to inventory. |
-| `Añadir al inventario` | Add manually or move bought items into inventory. |
+| `Finalizar compra` | Complete checked shopping items and move them to inventory |
+| `Añadir al inventario` | Add manually or move bought items into inventory |
 
-Avoid:
+## Inventory Rules
 
-| Label | Reason |
-|---|---|
-| `Añadir a nevera` | Too narrow; products may belong to pantry or freezer. |
-
----
-
-## Add product flow
-
-Expected fields:
-
-- product name
-- category
-- location
-- amount
-- weight
-
-Rules:
-
-- Category must remain visibly selected after tapping.
-- Location must remain visibly selected after tapping.
-- Amount and weight must remain independent.
-- The UI should not lose user input during recomposition.
-- Product creation should persist locally when the user confirms the action.
-
----
-
-## Inventory rules
-
-- Inventory items should persist locally.
-- Inventory should distinguish between Nevera, Despensa and Congelador.
+- Inventory should persist locally when persistence exists for the feature.
+- Inventory must distinguish `Nevera`, `Despensa` and `Congelador`.
 - Moving or adding products must preserve category, amount, weight and location when available.
-- UI filters/tabs should not change stored product data.
-- Visual labels must match the product location.
+- UI filters/tabs must not mutate stored product data.
+- Visual labels must match product location.
 
----
+## Shopping Rules
 
-## Shopping list rules
-
-- Shopping items should persist locally.
-- Checked means bought, not deleted.
-- Finalization decides what happens with checked items.
+- Shopping items should persist locally when persistence exists for the feature.
+- `checked` means bought/selected, not deleted.
+- Finalization decides what happens to checked items.
 - Unchecked items remain in the shopping list.
-- Shopping state must survive app restart when persistence is available.
+- Shopping state should survive app restart when persistence is available.
 
----
+## Migration Rules
 
-## Screen migration product rules
-
-When migrating screens from HTML/Stitch/Pencil/Figma:
+When migrating screens from HTML, Stitch, Pencil, Figma or screenshots:
 
 - Do not redesign product flows.
 - Do not change product terminology without explicit request.
 - Do not change amount/weight semantics.
 - Do not remove selected category/location states.
 - Do not change shopping finalization behaviour.
-- Do not introduce labels that imply all products go to the fridge.
+- Do not introduce labels that imply every product goes to the fridge.
 
----
+## Product Checklist
 
-## Product-risk checklist
+Before completing product-related work, verify:
 
-Before marking product-related work complete, check:
-
-| Check | Required |
-|---|---|
-| Amount and weight are independent. | Yes |
-| Location supports Nevera, Despensa and Congelador. | Yes |
-| Checked shopping items can be finalized. | Yes |
-| Unchecked shopping items remain pending. | Yes |
-| Inventory persists locally when required. | Yes |
-| UI labels do not narrow inventory to only fridge. | Yes |
-| No product data is silently lost. | Yes |
+- Amount and weight remain independent.
+- Locations support `Nevera`, `Despensa` and `Congelador`.
+- Checked shopping items can be finalized.
+- Unchecked shopping items remain pending.
+- Required persistence is preserved.
+- UI labels do not narrow inventory to only fridge.
+- No product data is silently lost.

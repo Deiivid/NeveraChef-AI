@@ -1,50 +1,35 @@
 # Compose Screen Review Skill
 
-Use this skill when reviewing a Kotlin Multiplatform Compose screen for correctness, architecture, readability, state handling, accessibility and maintainability.
+Use this skill when reviewing a Kotlin Multiplatform Compose screen for correctness, architecture, state handling, accessibility and maintainability.
 
-This skill combines Google's Compose guidance with JetBrains/Kotlin Compose Multiplatform constraints.
+## Use For
 
----
+- implemented screen reviews
+- PRs touching Compose UI
+- HTML/Stitch/Pencil/Figma migrations
+- visual and architectural quality checks
+- state/callback boundary checks
 
-## When to use this skill
+Do not use for broad data-layer, Gradle-only, backend/network-only or full architecture redesign reviews unless requested.
 
-Use for:
-
-- reviewing an implemented screen
-- reviewing a PR touching Compose UI
-- checking HTML/Stitch/Pencil migrations
-- checking visual and architectural quality
-- checking state/callback boundaries
-
-Do not use for:
-
-- broad data-layer review
-- Gradle-only changes
-- backend/network-only changes
-- full architecture redesign unless requested
-
----
-
-## Review checklist
+## Checklist
 
 | Area | Check |
 |---|---|
-| Scope | Only intended files were changed. |
-| Architecture | Screen renders state and emits events. |
-| State | State is immutable, explicit and render-ready. |
-| Callbacks | Callbacks are preserved and clearly named. |
-| Business logic | No business rules inside Composables. |
-| Platform safety | No Android/iOS APIs in `shared/commonMain`. |
-| Design system | Existing tokens/components are reused. |
-| Performance | No expensive work during composition. |
-| Accessibility | Text, touch targets and content descriptions are reasonable. |
-| Validation | Build/test/lint status is honest. |
+| Scope | Only intended files changed |
+| Architecture | Screen renders state and emits events |
+| State | State is immutable, explicit and render-ready |
+| Callbacks | Callbacks are preserved and clearly named |
+| Business logic | No business rules inside Composables |
+| Platform safety | No Android/iOS APIs in `shared/commonMain` |
+| Design system | Existing tokens/components are reused |
+| Performance | No expensive work during composition |
+| Accessibility | Text, touch targets and content descriptions are reasonable |
+| Validation | Build/test/lint status is honest |
 
----
+## Architecture Checks
 
-## Compose architecture checks
-
-The screen should follow this flow:
+Expected flow:
 
 ```text
 State -> Screen -> Event/Callback -> State holder/ViewModel -> State
@@ -52,22 +37,19 @@ State -> Screen -> Event/Callback -> State holder/ViewModel -> State
 
 Rules:
 
-- Stateless or mostly stateless screens are preferred.
+- Prefer stateless or mostly stateless screens.
 - State holders/ViewModels own UI logic when complexity requires it.
-- Composables should not call repositories, preferences, database APIs or AI providers directly.
-- Do not trigger AI provider calls from `LaunchedEffect(Unit)` inside a screen. Route user intent through events and a state holder/ViewModel.
-- Navigation callbacks should be passed down, not hidden in deeply nested Composables unless the existing project convention does so.
-- State should be hoisted when multiple composables need it or when it must survive recomposition.
+- Composables must not call repositories, preferences, database APIs or AI providers directly.
+- Do not trigger AI provider calls from `LaunchedEffect(Unit)` inside a screen.
+- Pass navigation callbacks down unless the existing project convention differs.
+- Hoist state when multiple composables need it or it must survive recomposition.
 
----
+## Implementation Checks
 
-## Compose implementation checks
-
-Check for:
+Look for:
 
 - unnecessary nested `Box`/`Column`/`Row`
-- hardcoded colors when tokens exist
-- hardcoded spacing when spacing tokens exist
+- hardcoded colors or spacing when tokens exist
 - duplicated UI that should be a small private composable
 - over-abstraction for one-off UI
 - unstable objects passed unnecessarily
@@ -75,80 +57,63 @@ Check for:
 - incorrect `remember` usage
 - misuse of `derivedStateOf`
 - missing `key`/stable identity in dynamic lists when needed
-- excessive `Modifier` chains that hide intent
-- UI effects collected without lifecycle awareness, such as plain `collect` in `LaunchedEffect(Unit)` instead of a lifecycle-aware collection strategy
+- modifier chains that hide intent
+- UI effects collected without lifecycle awareness
 
----
-
-## KMP checks
+## KMP Checks
 
 For shared Compose screens:
 
 - no `android.*` imports
 - no Activity/Fragment/Context dependencies
 - no UIKit/Swift-only APIs
-- use common resources when the UI is shared
-- platform-specific behavior is behind source sets or shared contracts
+- use common resources for shared UI
+- keep platform-specific behaviour behind source sets or shared contracts
 - Android-only UI belongs in `androidApp/` or `androidMain`
 - iOS-only UI belongs in `iosApp/` or `iosMain`
 
----
+## Accessibility Checks
 
-## Accessibility checks
-
-Check:
-
-- interactive elements have sufficient touch area
-- icons have meaningful content descriptions or are explicitly decorative
-- text is readable and not clipped
-- color alone is not the only signal for critical states
-- font scale should not obviously break the layout
-- disabled/loading/error states are understandable
+- Interactive elements have sufficient touch area.
+- Meaningful icons have content descriptions.
+- Decorative icons are explicitly decorative.
+- Text is readable and not clipped.
+- Color alone is not the only signal for critical states.
+- Font scale should not obviously break layout.
+- Disabled, loading and error states are understandable.
 
 Severity guidance:
 
-- Insufficient touch area on primary actions is Major.
-- Critical state communicated only by color is Major.
-- Missing content descriptions on meaningful icons are Minor unless they block a critical flow.
-- Decorative icons without explicit decorative handling are Minor.
+- Insufficient touch area on primary actions: Major.
+- Critical state communicated only by color: Major.
+- Missing content descriptions on meaningful icons: Minor unless blocking a critical flow.
+- Decorative icons without explicit decorative handling: Minor.
 
----
+## Visual Migration Checks
 
-## Visual migration checks
+Skip if no reference screenshot, visual spec or source screen exists.
 
-Skip this section if no reference screenshot, visual spec or source screen is available.
+- Match layout hierarchy first.
+- Match spacing before micro details.
+- Match typography and colors using design tokens when possible.
+- Do not copy CSS structure blindly.
+- Prefer Compose layout intent over HTML markup.
+- Note differences caused by the project design system.
 
-When reviewing a screen migrated from HTML/screenshot:
-
-- match layout hierarchy first
-- match spacing before micro details
-- match typography and colors using design tokens when possible
-- do not copy CSS structure blindly
-- prefer Compose layout intent over HTML markup
-- note differences caused by the project design system
-
----
-
-## Severity levels
-
-Use severity levels:
+## Severity
 
 | Severity | Meaning |
 |---|---|
-| Critical | Bug, crash, broken architecture boundary, data loss or security issue. |
-| Major | Likely maintainability, state, UX or validation problem. |
-| Minor | Small readability, naming, style or localized UI issue. |
-| Suggestion | Optional improvement. |
+| Critical | Crash, broken architecture boundary, data loss or security issue |
+| Major | Likely maintainability, state, UX or validation problem |
+| Minor | Small readability, naming, style or localized UI issue |
+| Suggestion | Optional improvement |
 
-Severity-specific rule:
+UI effects collected without lifecycle awareness are Major when the screen handles navigation, snackbar or one-off user feedback.
 
-- UI effects collected without lifecycle awareness are Major when the screen handles navigation, snackbar or one-off user feedback.
+## Output
 
----
-
-## Review output
-
-Return:
+With issues:
 
 ```text
 Review:
@@ -164,7 +129,7 @@ Recommended next action:
 - ...
 ```
 
-If there are no issues:
+Without issues:
 
 ```text
 Review:

@@ -1,79 +1,63 @@
-# NeveraChef AI — Android Validation
+# NeveraChef AI - Android Validation
 
 > **Version:** 2026-05-26  
-> **Scope:** Android/KMP validation rules for NeveraChef AI.  
-> **Audience:** AI agents, Codex tasks and developers validating Android-facing changes.
+> **Scope:** Android/KMP build, test, lint and visual validation.
 
-Use this file when a task changes Android code, shared KMP code used by Android, Compose UI, Gradle configuration, tests, lint, Detekt or anything that can affect the Android build.
+Use this file when a task changes Android code, shared KMP code used by Android, Compose UI, Gradle, tests, lint or Detekt.
 
-For architecture and package ownership, use `.ai/ARCHITECTURE_CONTEXT.md`.  
-For root agent behaviour, use `AGENTS.md`.
-
----
-
-## Core rule
+## Rule
 
 Run the smallest useful validation command for the touched area.
 
-Never claim that a build, test, lint, Detekt, emulator, preview, screenshot or manual check was executed if it was not.
-
-If validation is skipped, unavailable or fails, report it clearly.
-
----
+Never claim a build, test, lint, Detekt, emulator, preview, screenshot or manual check was executed if it was not.
 
 ## Discovery
 
-Before running module-specific commands, inspect available Gradle modules when module names are uncertain:
+If module names are uncertain:
 
 ```bash
 ./gradlew projects
 ```
 
-Use the real module names shown by Gradle. Do not invent module paths.
+Use real module names shown by Gradle.
 
----
-
-## Common commands
+## Common Commands
 
 | Purpose | Command |
 |---|---|
-| List Gradle modules | `./gradlew projects` |
+| List modules | `./gradlew projects` |
 | Compile shared Kotlin for Android | `./gradlew :shared:compileKotlinAndroid` |
 | Build Android debug app | `./gradlew :androidApp:assembleDebug` |
-| Run all available unit tests | `./gradlew test` |
+| Run unit tests | `./gradlew test` |
 | Run Android lint debug variant | `./gradlew :androidApp:lintDebug` |
-| Run global Android lint, if configured | `./gradlew lint` |
+| Run global lint, if configured | `./gradlew lint` |
 | Run Detekt, if configured | `./gradlew detekt` |
 | Run checks, if configured | `./gradlew check` |
 
-If a command is not configured in the repository, report it as unavailable instead of treating it as passed.
+If a command is not configured, report it as unavailable. Do not count it as passed.
 
----
-
-## Validation by change type
+## Validation By Change Type
 
 | Change type | Minimum useful validation |
 |---|---|
-| Documentation-only change | No Gradle command required. Report validation as not run with reason. |
+| Documentation only | No Gradle command required; report not run with reason |
 | Shared domain/model/use case | `./gradlew :shared:compileKotlinAndroid` + relevant tests if present |
 | Shared Compose UI | `./gradlew :shared:compileKotlinAndroid` + `./gradlew :androidApp:assembleDebug` |
-| Android app UI only | `./gradlew :androidApp:assembleDebug` |
-| Android host/activity/app wiring | `./gradlew :androidApp:assembleDebug` |
-| Navigation changes | `./gradlew :shared:compileKotlinAndroid` + `./gradlew :androidApp:assembleDebug` |
+| Android app UI | `./gradlew :androidApp:assembleDebug` |
+| Android host/app wiring | `./gradlew :androidApp:assembleDebug` |
+| Navigation | `./gradlew :shared:compileKotlinAndroid` + `./gradlew :androidApp:assembleDebug` |
 | Persistence/preferences | `./gradlew :shared:compileKotlinAndroid` + relevant tests if present |
 | AI provider/repository contract | `./gradlew :shared:compileKotlinAndroid` + relevant tests if present |
-| Gradle/build configuration | `./gradlew projects` + `./gradlew :androidApp:assembleDebug` |
-| Dependency or plugin changes | `./gradlew :androidApp:assembleDebug` + `./gradlew test` |
-| Test code changes | Run the affected test task, or `./gradlew test` when unsure |
-| Lint configuration | `./gradlew :androidApp:lintDebug` or `./gradlew lint` |
-| Detekt configuration | `./gradlew detekt` |
-| Large cross-cutting Android change | Run the full Android validation sequence below |
+| Gradle/build config | `./gradlew projects` + `./gradlew :androidApp:assembleDebug` |
+| Dependency/plugin change | `./gradlew :androidApp:assembleDebug` + `./gradlew test` |
+| Test code | Affected test task, or `./gradlew test` when unsure |
+| Lint config | `./gradlew :androidApp:lintDebug` or `./gradlew lint` |
+| Detekt config | `./gradlew detekt` |
+| Large cross-cutting Android/KMP change | Full sequence below |
 
----
+## Full Sequence
 
-## Full Android validation sequence
-
-Use this before marking a large Android/KMP task as PR-ready:
+Use before marking a large Android/KMP task as PR-ready:
 
 ```bash
 ./gradlew :shared:compileKotlinAndroid
@@ -83,47 +67,31 @@ Use this before marking a large Android/KMP task as PR-ready:
 ./gradlew detekt
 ```
 
-If one command fails, stop unless the user explicitly asked to continue collecting failures.
+If one command fails, stop unless the user asked to continue collecting failures.
 
-Report the failing command and the relevant error summary.
-
----
-
-## Emulator, preview and screenshot validation
-
-Web/cloud agents must not claim Android Studio, emulator, Compose Preview or screenshot validation unless those tools are actually available and used.
-
-Local agents may use Android Studio, emulator, previews and screenshots when available.
+## UI Validation
 
 For UI changes:
 
-1. Build the app or affected module first.
-2. Capture screenshots only if the environment supports it.
-3. Compare screenshots against the requested UI, reference image or previous state.
-4. Report what was visually checked.
+1. Build the affected module/app first.
+2. Capture previews/screenshots only if the environment supports it.
+3. Compare against the request, reference image or previous state.
+4. Report exactly what was visually checked.
 
-If screenshots/previews are not available, say so directly.
+Do not claim Android Studio, emulator, Compose Preview or screenshot validation unless actually used.
 
----
-
-## Agent rules
+## Agent Rules
 
 - Prefer targeted validation over broad expensive validation.
-- Do not hide failing tests, lint, Detekt or build errors.
-- If `lint`, `detekt`, `check` or a module-specific task is not configured, report it as unavailable/skipped with the command attempted or the reason it was not attempted.
-- Do not treat an unavailable optional tool as a passed validation check.
+- Do not hide failing build, test, lint or Detekt output.
 - Do not edit unrelated files to make validation pass.
-- Do not change Gradle files just to make validation easier unless explicitly requested.
+- Do not change Gradle files only to make validation easier unless requested.
 - Do not modify iOS files for Android-only validation failures.
-- Do not claim success based only on code inspection when a validation command was required but not run.
-- If module names differ, run `./gradlew projects` and adapt commands to the real module names.
-- If the task is documentation-only, validation may be skipped, but the final response must say it was skipped and why.
+- If validation was required but not run, say so directly.
 
----
+## Report Format
 
-## Validation report format
-
-Use this format in the final response when validation passed:
+Passed:
 
 ```text
 Validation:
@@ -131,14 +99,14 @@ Validation:
 - Result: Passed
 ```
 
-Use this format when validation was not run:
+Not run:
 
 ```text
 Validation:
 - Not run. Reason: documentation-only change.
 ```
 
-Use this format when validation failed:
+Failed:
 
 ```text
 Validation:
@@ -147,12 +115,12 @@ Validation:
 - Error: <short relevant error>
 ```
 
-When multiple commands were run:
+Multiple commands:
 
 ```text
 Validation:
-- Ran: ./gradlew :shared:compileKotlinAndroid — Passed
-- Ran: ./gradlew :androidApp:assembleDebug — Passed
-- Ran: ./gradlew test — Failed
+- Ran: ./gradlew :shared:compileKotlinAndroid - Passed
+- Ran: ./gradlew :androidApp:assembleDebug - Passed
+- Ran: ./gradlew test - Failed
 - Error: <short relevant error>
 ```
