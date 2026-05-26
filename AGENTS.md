@@ -61,17 +61,22 @@ The stack below is the technical source of truth for AI agents working in this r
 | **Testing** | *Kotlin test / JUnit + Compose UI tests when needed* | Prioritize domain, state and mapper tests over fragile UI tests. |
 | **Quality tools** | *Existing project tools only* | Do not introduce Detekt, Ktlint, Sonar or custom checks unless requested. |
 | **Secrets** | *Never committed* | API keys, tokens and credentials must never be hardcoded. |
-### Platform boundaries
 
-| Area | Allowed responsibility |
+
+## Platform boundaries
+
+NeveraChef AI uses a Kotlin Multiplatform scaffold, but the MVP is Android-first.
+
+Respect platform boundaries strictly. Shared code must remain platform-neutral unless a real platform-specific difference requires `expect/actual`.
+
+| **Area** | *Allowed responsibility* |
 |---|---|
-| `shared/commonMain` | Pure shared Kotlin/Compose code. No Android/iOS framework APIs. |
-| `shared/androidMain` | Android-specific implementations for shared contracts. |
-| `androidApp/` | Android app host and Android framework integration. |
-| `shared/iosMain` | iOS-specific implementations for shared contracts. |
-| `iosApp/` | iOS app host and Swift/iOS framework integration. |
-| `expect/actual` | Use only for real platform differences that need a shared contract. |
-
+| **`shared/commonMain`** | *Pure shared Kotlin and Compose code.* Business rules, shared models, platform-neutral UI, state contracts and reusable logic. Must not depend on Android or iOS framework APIs. |
+| **`shared/androidMain`** | *Android-specific implementations for shared contracts.* Use this for Android-only platform behavior required by `commonMain`. |
+| **`shared/iosMain`** | *iOS-specific implementations for shared contracts.* Use this for iOS-only platform behavior required by `commonMain`. |
+| **`androidApp/`** | *Android application host.* Android entry point, Android framework integration, permissions, activities, app theme wiring and Android-only setup. |
+| **`iosApp/`** | *iOS application host scaffold.* Swift/iOS host integration only. Do not expand iOS product features unless explicitly requested. |
+| **`expect/actual`** | *Platform abstraction mechanism.* Use only for real platform differences that need a shared contract. Do not use it for speculative reuse. |
 ---
 
 ## Repository map
