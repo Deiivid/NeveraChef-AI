@@ -63,22 +63,54 @@ The stack below is the technical source of truth for AI agents working in this r
 | **Secrets** | *Never committed* | API keys, tokens and credentials must never be hardcoded. |
 
 
-## Platform boundaries
+### Platform boundary diagram
 
-NeveraChef AI uses a Kotlin Multiplatform scaffold, but the MVP is Android-first.
+```mermaid
+flowchart TD
+    AndroidApp["androidApp/<br/>Android app host<br/>Android framework integration"]
+    IosApp["iosApp/<br/>iOS app host scaffold<br/>Swift/iOS framework integration"]
 
-Respect platform boundaries strictly. Shared code must remain platform-neutral unless a real platform-specific difference requires `expect/actual`.
+    Shared["shared/<br/>Kotlin Multiplatform shared module"]
 
-| **Area** | *Allowed responsibility* |
-|---|---|
-| **`shared/commonMain`** | *Pure shared Kotlin and Compose code.* Business rules, shared models, platform-neutral UI, state contracts and reusable logic. Must not depend on Android or iOS framework APIs. |
-| **`shared/androidMain`** | *Android-specific implementations for shared contracts.* Use this for Android-only platform behavior required by `commonMain`. |
-| **`shared/iosMain`** | *iOS-specific implementations for shared contracts.* Use this for iOS-only platform behavior required by `commonMain`. |
-| **`androidApp/`** | *Android application host.* Android entry point, Android framework integration, permissions, activities, app theme wiring and Android-only setup. |
-| **`iosApp/`** | *iOS application host scaffold.* Swift/iOS host integration only. Do not expand iOS product features unless explicitly requested. |
-| **`expect/actual`** | *Platform abstraction mechanism.* Use only for real platform differences that need a shared contract. Do not use it for speculative reuse. |
----
+    Common["shared/commonMain<br/>Pure shared Kotlin / Compose<br/>No Android/iOS framework APIs"]
+    AndroidMain["shared/androidMain<br/>Android-specific implementations<br/>for shared contracts"]
+    IosMain["shared/iosMain<br/>iOS-specific implementations<br/>for shared contracts"]
 
+    ExpectActual["expect / actual<br/>Only for real platform differences<br/>that need a shared contract"]
+
+    AndroidFramework["Android framework APIs<br/>Activity, Context, Resources, Permissions"]
+    IosFramework["iOS framework APIs<br/>UIKit, Foundation, Swift APIs"]
+
+    AndroidApp --> Shared
+    IosApp --> Shared
+
+    Shared --> Common
+    Shared --> AndroidMain
+    Shared --> IosMain
+
+    Common --> ExpectActual
+    ExpectActual --> AndroidMain
+    ExpectActual --> IosMain
+
+    AndroidApp --> AndroidFramework
+    IosApp --> IosFramework
+
+    AndroidMain --> AndroidFramework
+    IosMain --> IosFramework
+
+    Common -. "must not depend on" .-> AndroidFramework
+    Common -. "must not depend on" .-> IosFramework
+
+    classDef app fill:#E3F2FD,stroke:#1565C0,stroke-width:1px,color:#0D47A1;
+    classDef shared fill:#E8F5E9,stroke:#2E7D32,stroke-width:1px,color:#1B5E20;
+    classDef platform fill:#FFF3E0,stroke:#EF6C00,stroke-width:1px,color:#E65100;
+    classDef warning fill:#FFEBEE,stroke:#C62828,stroke-width:1px,color:#B71C1C;
+
+    class AndroidApp,IosApp app;
+    class Shared,Common,ExpectActual shared;
+    class AndroidMain,IosMain platform;
+    class AndroidFramework,IosFramework warning;
+```
 ## Repository map
 
 ```text
