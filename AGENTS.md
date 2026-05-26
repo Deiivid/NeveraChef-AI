@@ -32,19 +32,35 @@
 
 ---
 
-## Tech stack
+## Tech Stack
 
-| Area | Standard |
-|---|---|
-| Language | Kotlin-first. |
-| Multiplatform | Kotlin Multiplatform. Shared code lives in `shared/`. |
-| **UI** | Compose Multiplatform for shared UI and Android UI (Material3) other things forbidden |
-| iOS host | Swift / SwiftUI only for iOS platform integration in `iosApp/`. |
-| Build | Gradle Kotlin DSL + Android Gradle Plugin. |
-| Async/state | Coroutines + Flow / StateFlow. |
-| Architecture | Pragmatic Clean Architecture. Use MVVM/MVI-style state management when useful. |
-| Persistence | Local-first when data must survive app restarts. |
+NeveraChef AI is an **Android-first MVP** built on top of a **Kotlin Multiplatform / Compose Multiplatform scaffold**.
 
+The stack below is the technical source of truth for AI agents working in this repository. Follow these decisions unless the user explicitly asks for a different approach.
+
+### Stack overview
+
+| Area | Decision | Notes |
+|---|---|---|
+| **Primary language** | *Kotlin* | Default language for app code, shared logic and tests. |
+| **Secondary language** | *Swift* | Only for minimal iOS host integration if needed. Do not expand iOS features unless requested. |
+| **UI toolkit** | *Jetpack Compose / Compose Multiplatform* | All application UI must be written in Compose. |
+| **Design system** | *Material 3* | Use Material 3 components and interaction patterns by default. |
+| **App strategy** | *Android-first MVP* | Android is the first real production target. |
+| **Multiplatform strategy** | *Kotlin Multiplatform scaffold* | Extract shared code only when stable, platform-neutral and genuinely reusable. |
+| **Architecture** | *Pragmatic Clean Architecture* | Use layers when they reduce coupling, improve testability or clarify ownership. |
+| **Presentation pattern** | *MVVM / MVI-style state handling* | Prefer immutable `UiState`, explicit events and unidirectional data flow. |
+| **State management** | *Coroutines, Flow and StateFlow* | Prefer `StateFlow<UiState>` for observable screen state. |
+| **Dependency Injection** | *Constructor injection by default* | Do not introduce Hilt, Koin or a DI framework unless explicitly requested or already present. |
+| **Navigation** | *Compose Navigation when needed* | Do not add navigation abstractions prematurely. |
+| **Persistence** | *Local-first* | Do not add Room, SQLDelight, DataStore, Firebase or Supabase unless requested. |
+| **Networking** | *Not part of the base MVP by default* | Do not add Retrofit, Ktor or HTTP clients unless required by the task. |
+| **AI integration** | *Provider / repository abstraction* | UI must not depend directly on AI SDKs, prompts or HTTP clients. |
+| **Build system** | *Gradle Kotlin DSL* | Keep build logic simple, explicit and maintainable. |
+| **Dependency management** | *Gradle Version Catalog* | `gradle/libs.versions.toml` is the source of truth. |
+| **Testing** | *Kotlin test / JUnit + Compose UI tests when needed* | Prioritize domain, state and mapper tests over fragile UI tests. |
+| **Quality tools** | *Existing project tools only* | Do not introduce Detekt, Ktlint, Sonar or custom checks unless requested. |
+| **Secrets** | *Never committed* | API keys, tokens and credentials must never be hardcoded. |
 ### Platform boundaries
 
 | Area | Allowed responsibility |
