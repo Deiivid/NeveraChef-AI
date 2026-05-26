@@ -108,16 +108,22 @@ NeveraChefAI/
 
 ## Hard operating rules
 
-| Rule | Meaning |
+These rules are mandatory for AI agents working in this repository.
+
+| **Rule** | *Meaning* |
 |---|---|
-| Stay scoped | Do not touch unrelated files or mix unrelated fixes. |
-| No broad cleanup | Do not reformat, rename or reorganize unless requested. |
-| No casual dependencies | Do not add libraries, plugins or frameworks unless explicitly requested. |
-| No platform leaks | Do not put Android/iOS framework APIs in `shared/commonMain`. |
-| No fake production code | Do not create placeholder implementations that look finished. |
-| No silent failures | Do not ignore failing tests, lint, detekt or build errors. |
-| No false validation | Do not claim validation was executed if it was not. |
-| No secrets | Do not expose API keys, tokens, signing material or private credentials. |
+| **Stay scoped** | *Only change files required by the current task.* Do not mix unrelated fixes, refactors or improvements. |
+| **No broad cleanup** | *Do not reformat, rename, reorder or reorganize code unless explicitly requested.* Avoid noisy diffs. |
+| **No casual dependencies** | *Do not add libraries, Gradle plugins, frameworks or tools unless explicitly requested.* Prefer existing project capabilities. |
+| **No platform leaks** | *Do not put Android or iOS framework APIs in `shared/commonMain`.* Platform-specific code belongs in the correct source set or host module. |
+| **No fake production code** | *Do not create placeholder, mock or fake implementations that look production-ready.* If a temporary implementation is required, mark it clearly. |
+| **No silent failures** | *Do not ignore failing tests, lint, Detekt, build errors or runtime errors.* Report them clearly. |
+| **No false validation** | *Do not claim that tests, lint, builds or checks were executed if they were not.* State exactly what was and was not validated. |
+| **No secrets** | *Never expose or commit API keys, tokens, signing material, credentials or private configuration.* Use safe placeholders only. |
+| **No architecture theatre** | *Do not add layers, use cases, repositories, abstractions or patterns unless they provide clear value.* Keep the MVP pragmatic. |
+| **No UI framework drift** | *Do not introduce XML layouts, Android Views or alternative UI frameworks.* Compose is the default UI technology. |
+| **No premature multiplatform work** | *Do not expand iOS or over-extract shared code unless explicitly requested.* Android-first delivery has priority. |
+| **No hidden assumptions** | *When a decision is ambiguous, use the smallest safe implementation and document the assumption briefly.* |
 
 ---
 
@@ -262,3 +268,4 @@ Do not:
 - Stage secrets, local caches, build outputs, or unrelated files.
 
 When GitHub workflow is required, use the relevant GitHub skill if available.
+
