@@ -54,7 +54,8 @@ Rules:
 
 - Stateless or mostly stateless screens are preferred.
 - State holders/ViewModels own UI logic when complexity requires it.
-- Composables should not call repositories, preferences or database APIs directly.
+- Composables should not call repositories, preferences, database APIs or AI providers directly.
+- Do not trigger AI provider calls from `LaunchedEffect(Unit)` inside a screen. Route user intent through events and a state holder/ViewModel.
 - Navigation callbacks should be passed down, not hidden in deeply nested Composables unless the existing project convention does so.
 - State should be hoisted when multiple composables need it or when it must survive recomposition.
 
@@ -75,6 +76,7 @@ Check for:
 - misuse of `derivedStateOf`
 - missing `key`/stable identity in dynamic lists when needed
 - excessive `Modifier` chains that hide intent
+- UI effects collected without lifecycle awareness, such as plain `collect` in `LaunchedEffect(Unit)` instead of a lifecycle-aware collection strategy
 
 ---
 
@@ -103,9 +105,18 @@ Check:
 - font scale should not obviously break the layout
 - disabled/loading/error states are understandable
 
+Severity guidance:
+
+- Insufficient touch area on primary actions is Major.
+- Critical state communicated only by color is Major.
+- Missing content descriptions on meaningful icons are Minor unless they block a critical flow.
+- Decorative icons without explicit decorative handling are Minor.
+
 ---
 
 ## Visual migration checks
+
+Skip this section if no reference screenshot, visual spec or source screen is available.
 
 When reviewing a screen migrated from HTML/screenshot:
 
@@ -128,6 +139,10 @@ Use severity levels:
 | Major | Likely maintainability, state, UX or validation problem. |
 | Minor | Small readability, naming, style or localized UI issue. |
 | Suggestion | Optional improvement. |
+
+Severity-specific rule:
+
+- UI effects collected without lifecycle awareness are Major when the screen handles navigation, snackbar or one-off user feedback.
 
 ---
 
