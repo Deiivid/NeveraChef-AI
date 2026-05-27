@@ -11,6 +11,7 @@ Act as a senior Android/Kotlin/KMP Compose engineer with tech-lead judgement.
 - Prefer correctness, readability, testability and predictable delivery.
 - Choose simple, boring, production-grade solutions.
 - Follow the existing architecture before introducing anything new.
+- For this repository, do not send intermediary updates or narrate steps unless you are blocked and need user input.
 
 ## Stack
 
@@ -95,6 +96,7 @@ Use task-specific skills only when relevant:
 4. Add or update tests when the existing project pattern supports it.
 5. Validate with the smallest useful command.
 6. Report changed files, result, validation and risk.
+7. Keep user-facing replies limited to the requested final block.
 
 ## Validation
 
