@@ -43,8 +43,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import es.neverachefai.core.designsystem.NeveraChefColors
-import es.neverachefai.core.persistence.LocalAppContentStore
-import es.neverachefai.core.persistence.PantryFoodRecord
+import es.neverachefai.feature.pantry.data.PantryRepositoryImpl
+import es.neverachefai.feature.pantry.domain.model.PantryFood
 import neverachefai.shared.generated.resources.Res
 import neverachefai.shared.generated.resources.ic_cat_eggs
 import neverachefai.shared.generated.resources.ic_cat_fish
@@ -87,6 +87,7 @@ fun PantryScreen(
     onReview: () -> Unit,
     onFoodClick: (PantryFoodUi) -> Unit,
 ) {
+    val pantryRepository = remember { PantryRepositoryImpl() }
     var searchQuery by remember { mutableStateOf("") }
     var showAddModal by remember { mutableStateOf(false) }
     var newName by remember { mutableStateOf("") }
@@ -99,7 +100,7 @@ fun PantryScreen(
 
     val foods = remember {
         mutableStateListOf<PantryFoodUi>().apply {
-            addAll(LocalAppContentStore.loadPantryFoods().map { it.toUi() })
+            addAll(pantryRepository.loadFoods().map { it.toUi() })
         }
     }
 
@@ -735,7 +736,7 @@ fun PantryScreen(
                         onClick = {
                             val trimmed = newName.trim()
                             if (trimmed.isNotEmpty()) {
-                                val current = LocalAppContentStore.loadPantryFoods().toMutableList()
+                                val current = pantryRepository.loadFoods().toMutableList()
                                 val quantityLabel = if (newMeasureType == "Peso") {
                                     "${newWeightAmount.ifBlank { "500" }} ${newWeightUnit.ifBlank { "g" }}"
                                 } else {
@@ -763,7 +764,7 @@ fun PantryScreen(
                                     PantryLocation.PANTRY -> "pantry"
                                     PantryLocation.FREEZER -> "freezer"
                                 }
-                                val newRecord = PantryFoodRecord(
+                                val newRecord = PantryFood(
                                     id = "pantry_${current.size + 1}_${
                                         trimmed.lowercase().replace(" ", "_")
                                     }",
@@ -778,7 +779,7 @@ fun PantryScreen(
                                     iconKey = iconKey,
                                 )
                                 current += newRecord
-                                LocalAppContentStore.savePantryFoods(current)
+                                pantryRepository.saveFoods(current)
                                 foods += newRecord.toUi()
 
                                 newName = ""
@@ -935,7 +936,7 @@ private fun LocationSummaryItem(
     }
 }
 
-private fun PantryFoodRecord.toUi(): PantryFoodUi {
+private fun PantryFood.toUi(): PantryFoodUi {
     val quantityLabel = if (quantity.isNotBlank()) {
         quantity
     } else {

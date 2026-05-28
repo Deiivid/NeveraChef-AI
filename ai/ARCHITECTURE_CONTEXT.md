@@ -25,6 +25,11 @@ NeveraChef AI is an Android-first Kotlin Multiplatform / Compose Multiplatform a
 | Persistence | Local-first for inventory, pantry, recipes and shopping data when required |
 | AI | Provider/repository abstraction; UI never calls providers directly |
 
+Feature-specific direction:
+
+- `pantry` and `shopping` are local-first features with full `data + domain + ui`.
+- `recipes` exposes generation contracts in `domain` and uses `data` as the AI provider boundary.
+
 ## Related Files
 
 | File | Purpose |
@@ -33,6 +38,7 @@ NeveraChef AI is an Android-first Kotlin Multiplatform / Compose Multiplatform a
 | `ai/PRODUCT_CONTEXT.md` | Product scope and product invariants |
 | `ai/VALIDATION_ANDROID.md` | Android/KMP validation |
 | `ai/WORKFLOW_FEATURE.md` | Active feature progress |
+| `ai/architecture/ARCH-01-kmp-feature-layered-mvvm.md` | Feature-layered architecture baseline |
 | `ai/skills/*/SKILL.md` | Task-specific execution rules |
 
 ## Source Ownership
@@ -61,16 +67,18 @@ Rules:
 | `core/ui/` | Reusable shared UI components when reuse is real |
 | `core/persistence/` | Local storage APIs and implementations |
 | `core/preferences/` | User settings and preferences storage |
-| `domain/model/` | Pure domain models |
-| `domain/usecase/` | Business actions, validation and orchestration when useful |
-| `domain/repository/` | Repository contracts |
-| `feature/*/` | Feature UI, state, events and presentation logic |
+| `feature/<name>/domain/model/` | Feature-owned pure domain models |
+| `feature/<name>/domain/usecase/` | Feature-owned business actions, validation and orchestration |
+| `feature/<name>/domain/<Feature>Repository.kt` | Feature repository contracts |
+| `feature/<name>/data/` | Repository implementations, datasources, DTOs and mappers |
+| `feature/<name>/ui/` | Feature screens, ViewModels, state, events and effects |
 | `feature/navigation/` | Shared routes and navigation graph when applicable |
 
 Rules:
 
 - Do not create empty folders just to match an ideal structure.
-- Add `domain/repository` or `domain/usecase` only when abstraction or business logic is useful.
+- There is no global application `domain/` layer for feature-owned logic.
+- Add feature `domain/usecase` only when abstraction or business logic is useful.
 - `core/persistence` and `core/preferences` must not be accessed directly from Composables.
 - Keep feature code grouped by product area.
 - Keep components in the feature until reuse is real.
@@ -80,29 +88,44 @@ Rules:
 Preferred flow:
 
 ```text
-Screen -> Event -> ViewModel/StateHolder -> UseCase -> Repository contract -> Data source
-Screen <- State <- ViewModel/StateHolder <- Result  <- Repository          <- Data source
+Screen -> Event -> ViewModel/StateHolder -> UseCase -> Repository contract <- Repository implementation <- Data source
+Screen <- State <- ViewModel/StateHolder <- Result  <- UseCase            <- Repository contract       <- Repository implementation
 ```
 
 Allowed dependencies:
 
 ```text
 app -> feature
-feature -> domain model/usecase/repository contracts
-feature -> core ui/designsystem
-core persistence/preferences -> domain models/contracts when needed
+feature/<name>/ui -> feature/<name>/domain
+feature/<name>/data -> feature/<name>/domain
+feature/<name>/ui -> core ui/designsystem
+feature/<name>/data -> core persistence/preferences when needed
 platform source sets -> shared contracts
 ```
 
 Forbidden dependencies:
 
 ```text
+feature/<name>/ui -> feature/<name>/data
+feature/<name>/data -> feature/<name>/ui
 Screen -> persistence/preferences/AI provider directly
-Domain -> Compose
-Domain -> Android/iOS framework
+feature/<name>/domain -> Compose
+feature/<name>/domain -> Android/iOS framework
 Feature A -> Feature B internals
 shared/commonMain -> android.* / UIKit / Swift-only APIs
 ```
+
+Feature-layered rule:
+
+```text
+ui -> domain <- data
+```
+
+`ui` owns screens, routes, UI state, UI events, one-off effects and ViewModels/state holders.
+`data` owns repository implementations, mappers, DTOs and datasources.
+`domain` is per-feature and owns pure models, use cases, validation and repository contracts.
+
+Local-first persistence must be accessed through feature `data` datasources. Composables and ViewModels must not know the concrete storage technology.
 
 ## Feature Shape
 
@@ -110,15 +133,24 @@ Use this shape for new or meaningfully reworked features only when it improves c
 
 ```text
 feature/<featureName>/
-├── <FeatureName>Route.kt
-├── <FeatureName>Screen.kt
-├── <FeatureName>State.kt
-├── <FeatureName>Event.kt
-├── <FeatureName>Effect.kt        Optional
-└── <FeatureName>ViewModel.kt     Only when needed
+├── data/
+│   ├── <FeatureName>RepositoryImpl.kt
+│   ├── <FeatureName>LocalDataSource.kt
+│   ├── dto/
+│   └── mapper/
+├── domain/
+│   ├── <FeatureName>Repository.kt
+│   ├── model/
+│   └── usecase/
+└── ui/
+    ├── <FeatureName>Screen.kt
+    ├── <FeatureName>ViewModel.kt
+    ├── <FeatureName>State.kt
+    ├── <FeatureName>Event.kt
+    └── <FeatureName>Effect.kt       Optional
 ```
 
-Do not create `Route`, `State`, `Event`, `Effect` or `ViewModel` files for screens too small to justify them.
+Do not create files or layer folders just for symmetry.
 
 ## Compose And State
 
@@ -149,10 +181,11 @@ Persistence:
 AI:
 
 - UI must not call provider SDKs/APIs directly.
-- Feature code depends on provider/repository contracts.
+- Feature UI depends on provider/repository contracts through feature domain use cases.
 - Provider DTOs must not leak into UI state.
 - API keys and tokens must never be hardcoded or committed.
 - Demo AI responses must be clearly named sample/demo/test data.
+- Recipes AI calls must be isolated in `feature/recipes/data` datasources/repository implementations.
 
 ## Navigation
 
