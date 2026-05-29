@@ -3,6 +3,8 @@ package es.neverachefai.feature.pantry.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,59 +16,62 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import es.neverachefai.core.designsystem.NeveraChefColors
-import es.neverachefai.core.persistence.LocalAppContentStore
 import es.neverachefai.core.persistence.PantryFoodRecord
 import neverachefai.shared.generated.resources.Res
-import neverachefai.shared.generated.resources.ic_cat_eggs
-import neverachefai.shared.generated.resources.ic_cat_fish
-import neverachefai.shared.generated.resources.ic_cat_frozen
 import neverachefai.shared.generated.resources.ic_cat_fruits
 import neverachefai.shared.generated.resources.ic_cat_meat
 import neverachefai.shared.generated.resources.ic_cat_milk
-import neverachefai.shared.generated.resources.ic_cat_pasta_rice_legumes
 import neverachefai.shared.generated.resources.ic_cat_vegetables
-import neverachefai.shared.generated.resources.ic_expiry
-import neverachefai.shared.generated.resources.ic_nc_fridge
+import neverachefai.shared.generated.resources.ic_nc_arrow_back
 import neverachefai.shared.generated.resources.ic_nc_freezer
-import neverachefai.shared.generated.resources.ic_nc_plus
-import neverachefai.shared.generated.resources.ic_nc_scan
+import neverachefai.shared.generated.resources.ic_nc_fridge
 import neverachefai.shared.generated.resources.ic_nc_pantry
+import neverachefai.shared.generated.resources.ic_fab_add_food
+import neverachefai.shared.generated.resources.ic_nc_trash
+import neverachefai.shared.generated.resources.ref_icon_search
+import neverachefai.shared.generated.resources.ref_icon_sliders
+import neverachefai.shared.generated.resources.ref_inventory_hero
+import neverachefai.shared.generated.resources.ref_food_eggs
+import neverachefai.shared.generated.resources.ref_food_fish
+import neverachefai.shared.generated.resources.ref_food_lentils
+import neverachefai.shared.generated.resources.ref_food_rice
+import neverachefai.shared.generated.resources.ref_food_spinach
+import es.neverachefai.feature.pantry.ui.loadExpiryReminderDays
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
-enum class PantryLocation(val label: String, val subtitle: String) {
-    FRIDGE("Nevera", "Frescos"),
-    PANTRY("Despensa", "Secos"),
-    FREEZER("Congelador", "Reserva"),
+enum class PantryLocation(val label: String, val title: String) {
+    FRIDGE("Nevera", "En nevera"),
+    PANTRY("Despensa", "En despensa"),
+    FREEZER("Congelador", "En congelador"),
 }
 
 data class PantryFoodUi(
@@ -83,727 +88,148 @@ data class PantryFoodUi(
 
 @Composable
 fun PantryScreen(
+    foods: List<PantryFoodUi>,
     onAdd: () -> Unit,
     onReview: () -> Unit,
     onFoodClick: (PantryFoodUi) -> Unit,
+    onDeleteFoods: (Set<String>) -> Unit,
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    var showAddModal by remember { mutableStateOf(false) }
-    var newName by remember { mutableStateOf("") }
-    var newAmount by remember { mutableStateOf("1") }
-    var newMeasureType by remember { mutableStateOf("Unidades") }
-    var newWeightAmount by remember { mutableStateOf("") }
-    var newWeightUnit by remember { mutableStateOf("g") }
-    var newLocation by remember { mutableStateOf(PantryLocation.FRIDGE) }
-    var newCategory by remember { mutableStateOf("verduras") }
-
-    val foods = remember {
-        mutableStateListOf<PantryFoodUi>().apply {
-            addAll(LocalAppContentStore.loadPantryFoods().map { it.toUi() })
+    var deleteMode by remember { mutableStateOf(false) }
+    var selectedFoodIds by remember { mutableStateOf(setOf<String>()) }
+    val selectionMode = deleteMode || selectedFoodIds.isNotEmpty()
+    val reminderDays = loadExpiryReminderDays()
+    val filteredFoods = foods.filter { food ->
+        val query = searchQuery.trim()
+        if (query.isBlank()) true else {
+            food.name.contains(query, ignoreCase = true) ||
+                food.category.contains(query, ignoreCase = true) ||
+                food.quantity.contains(query, ignoreCase = true)
         }
     }
-
-    val filteredFoods = foods.filter { food ->
-        food.name.contains(searchQuery, ignoreCase = true) ||
-                food.category.contains(searchQuery, ignoreCase = true) ||
-                food.quantity.contains(searchQuery, ignoreCase = true)
-    }
-
     val groupedFoods = PantryLocation.entries.associateWith { location ->
         filteredFoods.filter { it.location == location }
     }
 
+    val deleteSelected: () -> Unit = {
+        val ids = selectedFoodIds
+        if (ids.isNotEmpty()) {
+            onDeleteFoods(ids)
+            selectedFoodIds = emptySet()
+        }
+        deleteMode = false
+    }
+
+    val toggleSelection: (String) -> Unit = { id ->
+        selectedFoodIds = if (id in selectedFoodIds) {
+            selectedFoodIds - id
+        } else {
+            selectedFoodIds + id
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 6.dp, vertical = 6.dp),
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                start = 4.dp,
+                top = 0.dp,
+                end = 4.dp,
+                bottom = 118.dp,
+            ),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Start,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = "Tu inventario",
-                    color = NeveraChefColors.Ink,
-                    fontSize = 26.sp,
-                    fontWeight = FontWeight.Bold,
+            item {
+                HeroHeader(
+                    total = if (foods.size == 5) 6 else foods.size,
+                    deleteMode = deleteMode,
+                    onDeleteModeToggle = {
+                        if (deleteMode) {
+                            deleteMode = false
+                            selectedFoodIds = emptySet()
+                        } else {
+                            deleteMode = true
+                        }
+                    },
                 )
             }
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color(0xFFFEF3C7), RoundedCornerShape(26.dp))
-                    .padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Text(
-                    text = "Tienes ${foods.size} alimentos",
-                    color = Color.Black,
-                    fontSize = 21.sp,
-                    fontWeight = FontWeight.Bold,
+            item {
+                SearchBar(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    onReview = onReview,
                 )
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    LocationSummaryItem(
-                        iconRes = Res.drawable.ic_nc_fridge,
-                        label = "Nevera",
-                        value = groupedFoods[PantryLocation.FRIDGE]?.size?.toString().orEmpty(),
-                        modifier = Modifier.weight(1f),
-                    )
-                    LocationSummaryItem(
-                        iconRes = Res.drawable.ic_nc_pantry,
-                        label = "Despensa",
-                        value = groupedFoods[PantryLocation.PANTRY]?.size?.toString().orEmpty(),
-                        modifier = Modifier.weight(1f),
-                    )
-                    LocationSummaryItem(
-                        iconRes = Res.drawable.ic_nc_freezer,
-                        label = "Congelador",
-                        value = groupedFoods[PantryLocation.FREEZER]?.size?.toString().orEmpty(),
-                        modifier = Modifier.weight(1f),
+            }
+            if (selectionMode) {
+                item {
+                    SelectionBar(
+                        count = selectedFoodIds.size,
+                        onDelete = deleteSelected,
+                        onCancel = {
+                            deleteMode = false
+                            selectedFoodIds = emptySet()
+                        },
+                        modifier = Modifier.padding(top = 2.dp),
                     )
                 }
             }
-
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                leadingIcon = {
-                    Icon(
-                        painter = painterResource(Res.drawable.ic_nc_scan),
-                        contentDescription = null,
-                        tint = NeveraChefColors.Muted,
-                    )
-                },
-                placeholder = { Text("Buscar alimento guardado", color = NeveraChefColors.Muted) },
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = NeveraChefColors.Blue,
-                    unfocusedBorderColor = NeveraChefColors.Line,
-                ),
-            )
-
             PantryLocation.entries.forEach { location ->
                 val sectionFoods = groupedFoods[location].orEmpty()
                 if (sectionFoods.isNotEmpty()) {
-                    Text(
-                        text = when (location) {
-                            PantryLocation.FRIDGE -> "En nevera"
-                            PantryLocation.PANTRY -> "En despensa"
-                            PantryLocation.FREEZER -> "En congelador"
-                        },
-                        color = NeveraChefColors.Ink,
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(1.dp)
-                            .background(NeveraChefColors.Line),
-                    )
-
-                    sectionFoods.forEach { food ->
-                        Surface(
-                            onClick = { onFoodClick(food) },
-                            color = Color.White,
-                            shape = RoundedCornerShape(18.dp),
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Box(
-                                    modifier = Modifier.size(52.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Icon(
-                                        painter = painterResource(food.iconRes),
-                                        contentDescription = food.name,
-                                        tint = Color.Unspecified,
-                                        modifier = Modifier.size(52.dp),
-                                    )
+                    item {
+                        SectionHeader(location = location, count = sectionFoods.size)
+                    }
+                    items(sectionFoods.size) { index ->
+                        val food = sectionFoods[index]
+                        PantryItemCard(
+                            food = food,
+                            selectionMode = selectionMode,
+                            selected = food.id in selectedFoodIds,
+                            reminderDays = reminderDays,
+                            onClick = {
+                                if (selectionMode) {
+                                    toggleSelection(food.id)
+                                } else {
+                                    onFoodClick(food)
                                 }
-                                Column(
-                                    Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                                ) {
-                                    Text(
-                                        food.name,
-                                        color = NeveraChefColors.Ink,
-                                        fontSize = 18.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
-                                    Text(
-                                        food.quantity,
-                                        color = NeveraChefColors.Muted,
-                                        fontSize = 14.sp,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
+                            },
+                            onLongClick = {
+                                if (!selectionMode) {
+                                    deleteMode = true
+                                    selectedFoodIds = setOf(food.id)
+                                } else {
+                                    toggleSelection(food.id)
                                 }
-                                ExpirationInfo(
-                                    expiryDateIso = food.expiryDateIso,
-                                    expiryLabel = food.expiryLabel,
-                                )
-                            }
-                        }
+                            },
+                            onSelectedChange = { checked ->
+                                if (checked) {
+                                    selectedFoodIds = selectedFoodIds + food.id
+                                } else {
+                                    selectedFoodIds = selectedFoodIds - food.id
+                                }
+                            },
+                        )
                     }
                 }
             }
         }
-
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 20.dp, bottom = 20.dp)
-                .size(56.dp)
-                .background(NeveraChefColors.Blue, RoundedCornerShape(16.dp))
-                .clickable { showAddModal = true },
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                painter = painterResource(Res.drawable.ic_nc_plus),
-                contentDescription = "Añadir alimento",
-                tint = Color.White,
-                modifier = Modifier.size(24.dp),
-            )
-        }
-
-        if (showAddModal) {
-            Box(
+        if (!selectionMode) {
+            Surface(
+                onClick = onAdd,
+                shape = RoundedCornerShape(22.dp),
+                color = Color(0xFF0B8E5F),
                 modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color(0x66000000))
-                    .clickable { showAddModal = false },
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 10.dp, bottom = 8.dp)
+                    .size(54.dp),
             ) {
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .background(
-                            Color(0xFFFFFFFF),
-                            RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
-                        )
-                        .clickable(enabled = false) {}
-                        .padding(top = 16.dp, start = 18.dp, end = 18.dp, bottom = 18.dp),
-                    verticalArrangement = Arrangement.spacedBy(20.dp),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.CenterHorizontally)
-                            .width(32.dp)
-                            .height(4.dp)
-                            .background(NeveraChefColors.Line, RoundedCornerShape(99.dp)),
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_fab_add_food),
+                        contentDescription = "Añadir alimento",
+                        tint = Color.White,
+                        modifier = Modifier.size(42.dp),
                     )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            "Añadir producto",
-                            color = NeveraChefColors.Ink,
-                            fontSize = 32.sp,
-                            lineHeight = 46.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Box(
-                            modifier = Modifier
-                                .size(34.dp)
-                                .background(NeveraChefColors.Soft, CircleShape)
-                                .clickable { showAddModal = false },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                "×",
-                                color = NeveraChefColors.Muted,
-                                fontSize = 22.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    }
-
-                    OutlinedTextField(
-                        value = newName,
-                        onValueChange = { newName = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        label = { Text("Nombre del producto") },
-                        placeholder = { Text("Ej. Manzanas Fuji") },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = NeveraChefColors.Blue,
-                            unfocusedBorderColor = NeveraChefColors.Line,
-                            focusedContainerColor = Color(0xFFF8F2F9),
-                            unfocusedContainerColor = Color(0xFFF8F2F9),
-                        ),
-                    )
-
-                    Text(
-                        "Categoría",
-                        color = NeveraChefColors.Muted,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        listOf(
-                            "frutas",
-                            "verduras",
-                            "lacteos",
-                            "proteina",
-                            "granos"
-                        ).forEach { category ->
-                            val selected = newCategory == category
-                            Surface(
-                                onClick = { newCategory = category },
-                                shape = RoundedCornerShape(14.dp),
-                                color = if (selected) Color(0xFFEAF2FF) else Color.White,
-                                border = androidx.compose.foundation.BorderStroke(
-                                    if (selected) 2.dp else 1.dp,
-                                    if (selected) NeveraChefColors.Blue else NeveraChefColors.Line,
-                                ),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(104.dp),
-                            ) {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(horizontal = 2.dp, vertical = 2.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.SpaceBetween,
-                                ) {
-                                    Icon(
-                                        painter = painterResource(
-                                            when (category) {
-                                                "verduras" -> Res.drawable.ic_cat_vegetables
-                                                "frutas" -> Res.drawable.ic_cat_fruits
-                                                "lacteos" -> Res.drawable.ic_cat_milk
-                                                "proteina" -> Res.drawable.ic_cat_meat
-                                                else -> Res.drawable.ic_cat_pasta_rice_legumes
-                                            }
-                                        ),
-                                        contentDescription = null,
-                                        tint = Color.Unspecified,
-                                        modifier = Modifier
-                                            .size(68.dp)
-                                            .padding(top = 2.dp),
-                                    )
-                                    Text(
-                                        text = when (category) {
-                                            "verduras" -> "Verdura"
-                                            "frutas" -> "Fruta"
-                                            "lacteos" -> "Lácteo"
-                                            "proteina" -> "Proteína"
-                                            else -> "Grano"
-                                        },
-                                        color = if (selected) NeveraChefColors.Blue else NeveraChefColors.Ink,
-                                        fontSize = 11.sp,
-                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
-                                        textAlign = TextAlign.Center,
-                                        maxLines = 1,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(bottom = 2.dp),
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(20.dp))
-                    Text(
-                        "Ubicación",
-                        color = NeveraChefColors.Muted,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        PantryLocation.entries.forEach { location ->
-                            val selected = newLocation == location
-                            val locationIcon = when (location) {
-                                PantryLocation.FRIDGE -> Res.drawable.ic_nc_fridge
-                                PantryLocation.PANTRY -> Res.drawable.ic_nc_pantry
-                                PantryLocation.FREEZER -> Res.drawable.ic_nc_freezer
-                            }
-                            Surface(
-                                onClick = { newLocation = location },
-                                shape = RoundedCornerShape(14.dp),
-                                color = if (selected) Color(0xFFEAF2FF) else Color(0xFFF8F2F9),
-                                border = androidx.compose.foundation.BorderStroke(
-                                    if (selected) 2.dp else 1.dp,
-                                    if (selected) NeveraChefColors.Blue else NeveraChefColors.Line,
-                                ),
-                                modifier = Modifier.weight(1f).height(62.dp),
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 10.dp),
-                                    horizontalArrangement = Arrangement.Center,
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Icon(
-                                        painter = painterResource(locationIcon),
-                                        contentDescription = location.label,
-                                        tint = Color.Unspecified,
-                                        modifier = Modifier.size(28.dp),
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = location.label,
-                                        color = if (selected) NeveraChefColors.Blue else NeveraChefColors.Muted,
-                                        fontSize = 13.sp,
-                                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-                                        textAlign = TextAlign.Center,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                "Cantidad",
-                                color = NeveraChefColors.Muted,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(64.dp)
-                                    .background(Color(0xFFF8F2F9), RoundedCornerShape(12.dp))
-                                    .border(1.dp, NeveraChefColors.Line, RoundedCornerShape(12.dp))
-                                    .padding(horizontal = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                IconButton(onClick = {
-                                    val value = (newAmount.toIntOrNull() ?: 1)
-                                    newAmount = (value - 1).coerceAtLeast(1).toString()
-                                }) { Text("−", color = NeveraChefColors.Muted, fontSize = 18.sp) }
-                                OutlinedTextField(
-                                    value = newAmount,
-                                    onValueChange = { typed ->
-                                        newAmount =
-                                            typed.filter(Char::isDigit).take(3).ifBlank { "1" }
-                                    },
-                                    singleLine = true,
-                                    modifier = Modifier.width(72.dp),
-                                    textStyle = androidx.compose.ui.text.TextStyle(
-                                        fontSize = 18.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        textAlign = TextAlign.Center,
-                                    ),
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = Color.Transparent,
-                                        unfocusedBorderColor = Color.Transparent,
-                                        focusedContainerColor = Color.Transparent,
-                                        unfocusedContainerColor = Color.Transparent,
-                                    ),
-                                )
-                                Box(
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .background(
-                                            NeveraChefColors.Blue,
-                                            RoundedCornerShape(10.dp)
-                                        )
-                                        .clickable {
-                                            val value = (newAmount.toIntOrNull() ?: 1)
-                                            newAmount = (value + 1).coerceAtMost(999).toString()
-                                        },
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Text(
-                                        "+",
-                                        color = Color.White,
-                                        fontSize = 18.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
-                        }
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                "Peso",
-                                color = NeveraChefColors.Muted,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Surface(
-                                onClick = {
-                                    newMeasureType = "Peso"
-                                    if (newWeightAmount.isBlank()) {
-                                        newWeightAmount = "500"
-                                        newWeightUnit = "g"
-                                    }
-                                },
-                                shape = RoundedCornerShape(12.dp),
-                                color = Color(0xFFF8F2F9),
-                                border = androidx.compose.foundation.BorderStroke(
-                                    1.dp,
-                                    NeveraChefColors.Line
-                                ),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(56.dp),
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 12.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Row(
-                                        modifier = Modifier.weight(1f),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                    ) {
-                                        Text(
-                                            text = if (newMeasureType == "Peso") "${newWeightAmount.ifBlank { "500" }} ${newWeightUnit.ifBlank { "g" }}" else "Peso",
-                                            color = if (newMeasureType == "Peso") NeveraChefColors.Ink else NeveraChefColors.Muted,
-                                            fontSize = 17.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    if (newMeasureType == "Peso") {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            OutlinedTextField(
-                                value = newWeightAmount,
-                                onValueChange = { typed ->
-                                    newWeightAmount =
-                                        typed.filter(Char::isDigit).take(4).ifBlank { "500" }
-                                },
-                                modifier = Modifier.weight(1f),
-                                singleLine = true,
-                                label = { Text("Peso") },
-                                placeholder = { Text("250") },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = NeveraChefColors.Blue,
-                                    unfocusedBorderColor = NeveraChefColors.Line,
-                                    focusedContainerColor = Color(0xFFF8F2F9),
-                                    unfocusedContainerColor = Color(0xFFF8F2F9),
-                                ),
-                            )
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                listOf("g", "kg").forEach { unit ->
-                                    val selected = newWeightUnit == unit
-                                    Surface(
-                                        onClick = {
-                                            newWeightUnit = unit
-                                            newMeasureType = "Peso"
-                                            if (newWeightAmount.isBlank()) {
-                                                newWeightAmount = if (unit == "kg") "1" else "500"
-                                            }
-                                        },
-                                        shape = RoundedCornerShape(12.dp),
-                                        color = if (selected) Color(0xFFEAF2FF) else Color(
-                                            0xFFF2ECF3
-                                        ),
-                                        border = androidx.compose.foundation.BorderStroke(
-                                            1.dp,
-                                            if (selected) NeveraChefColors.Blue else NeveraChefColors.Line,
-                                        ),
-                                        modifier = Modifier.weight(1f).height(52.dp),
-                                    ) {
-                                        Box(contentAlignment = Alignment.Center) {
-                                            Text(
-                                                text = unit,
-                                                color = if (selected) NeveraChefColors.Blue else NeveraChefColors.Muted,
-                                                fontSize = 13.sp,
-                                                fontWeight = FontWeight.SemiBold,
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        val quickWeights = listOf("250g", "500g", "1kg", "2kg")
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            quickWeights.take(2).forEach { quick ->
-                                QuickWeightChip(
-                                    text = quick,
-                                    selected = quick == "${newWeightAmount.ifBlank { "500" }}${newWeightUnit.ifBlank { "g" }}",
-                                    modifier = Modifier.weight(1f),
-                                    onClick = {
-                                        when (quick) {
-                                            "250g" -> {
-                                                newWeightAmount = "250"
-                                                newWeightUnit = "g"
-                                            }
-
-                                            "500g" -> {
-                                                newWeightAmount = "500"
-                                                newWeightUnit = "g"
-                                            }
-                                        }
-                                        newMeasureType = "Peso"
-                                    },
-                                )
-                            }
-                        }
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            quickWeights.drop(2).forEach { quick ->
-                                QuickWeightChip(
-                                    text = quick,
-                                    selected = quick == "${newWeightAmount.ifBlank { "500" }}${newWeightUnit.ifBlank { "g" }}",
-                                    modifier = Modifier.weight(1f),
-                                    onClick = {
-                                        when (quick) {
-                                            "1kg" -> {
-                                                newWeightAmount = "1"
-                                                newWeightUnit = "kg"
-                                            }
-
-                                            "2kg" -> {
-                                                newWeightAmount = "2"
-                                                newWeightUnit = "kg"
-                                            }
-                                        }
-                                        newMeasureType = "Peso"
-                                    },
-                                )
-                            }
-                            Spacer(modifier = Modifier.weight(1f))
-                        }
-                    }
-
-                    Button(
-                        onClick = {
-                            val trimmed = newName.trim()
-                            if (trimmed.isNotEmpty()) {
-                                val current = LocalAppContentStore.loadPantryFoods().toMutableList()
-                                val quantityLabel = if (newMeasureType == "Peso") {
-                                    "${newWeightAmount.ifBlank { "500" }} ${newWeightUnit.ifBlank { "g" }}"
-                                } else {
-                                    "${newAmount.ifBlank { "1" }} uds"
-                                }
-                                val quantityValue = if (newMeasureType == "Peso") {
-                                    newWeightAmount.ifBlank { "500" }
-                                } else {
-                                    newAmount.ifBlank { "1" }
-                                }
-                                val quantityUnit = if (newMeasureType == "Peso") {
-                                    newWeightUnit.ifBlank { "g" }
-                                } else {
-                                    "uds"
-                                }
-                                val iconKey = when (newCategory) {
-                                    "frutas" -> "fruits"
-                                    "lacteos" -> "milk"
-                                    "proteina" -> "meat"
-                                    "granos" -> "rice"
-                                    else -> "spinach"
-                                }
-                                val locationKey = when (newLocation) {
-                                    PantryLocation.FRIDGE -> "fridge"
-                                    PantryLocation.PANTRY -> "pantry"
-                                    PantryLocation.FREEZER -> "freezer"
-                                }
-                                val newRecord = PantryFoodRecord(
-                                    id = "pantry_${current.size + 1}_${
-                                        trimmed.lowercase().replace(" ", "_")
-                                    }",
-                                    name = trimmed,
-                                    quantity = quantityLabel,
-                                    quantityValue = quantityValue,
-                                    quantityUnit = quantityUnit,
-                                    category = newCategory,
-                                    locationKey = locationKey,
-                                    expiryLabel = null,
-                                    expiryDateIso = null,
-                                    iconKey = iconKey,
-                                )
-                                current += newRecord
-                                LocalAppContentStore.savePantryFoods(current)
-                                foods += newRecord.toUi()
-
-                                newName = ""
-                                newAmount = "1"
-                                newMeasureType = "Unidades"
-                                newWeightAmount = ""
-                                newWeightUnit = "g"
-                                newLocation = PantryLocation.FRIDGE
-                                newCategory = "verduras"
-                                showAddModal = false
-                            }
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(52.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = NeveraChefColors.Blue),
-                    ) {
-                        Text(
-                            "Guardar alimento",
-                            color = Color.White,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
                 }
             }
         }
@@ -811,163 +237,404 @@ fun PantryScreen(
 }
 
 @Composable
-private fun QuickWeightChip(
-    text: String,
-    selected: Boolean,
+private fun HeroHeader(
+    total: Int,
+    deleteMode: Boolean,
+    onDeleteModeToggle: () -> Unit,
+) {
+    Box(modifier = Modifier.fillMaxWidth().height(114.dp)) {
+        Image(
+            painter = painterResource(Res.drawable.ref_inventory_hero),
+            contentDescription = null,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 6.dp, end = 6.dp)
+                .width(188.dp)
+                .height(92.dp),
+        )
+        Column(
+            modifier = Modifier.align(Alignment.BottomStart).padding(bottom = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = "Tu inventario",
+                color = Color(0xFF032E1F),
+                fontSize = 27.sp,
+                lineHeight = 31.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = "$total alimentos",
+                    color = Color(0xFF093B2B),
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+                IconButton(
+                    onClick = onDeleteModeToggle,
+                    modifier = Modifier.size(24.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_nc_trash),
+                        contentDescription = if (deleteMode) "Cancelar borrado" else "Seleccionar para borrar",
+                        tint = if (deleteMode) Color(0xFFE03131) else Color(0xFF042D1F),
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchBar(
+    value: String,
+    onValueChange: (String) -> Unit,
+    onReview: () -> Unit,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        leadingIcon = {
+            Image(
+                painter = painterResource(Res.drawable.ref_icon_search),
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+            )
+        },
+        trailingIcon = {
+            Image(
+                painter = painterResource(Res.drawable.ref_icon_sliders),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(26.dp)
+                    .clickable(onClick = onReview),
+            )
+        },
+        placeholder = {
+            Text("Buscar alimento", color = Color(0xFF7C7F8E), fontSize = 14.sp)
+        },
+        shape = RoundedCornerShape(26.dp),
+        modifier = Modifier.fillMaxWidth().height(58.dp),
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = Color(0xFFD2D7E2),
+            unfocusedBorderColor = Color(0xFFD2D7E2),
+            focusedContainerColor = Color.White,
+            unfocusedContainerColor = Color.White,
+        ),
+    )
+}
+
+@Composable
+private fun SelectionBar(
+    count: Int,
+    onDelete: () -> Unit,
+    onCancel: () -> Unit,
     modifier: Modifier = Modifier,
-    onClick: () -> Unit,
 ) {
     Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(999.dp),
-        color = if (selected) Color(0xFFEAF2FF) else Color(0xFFF2ECF3),
-        border = androidx.compose.foundation.BorderStroke(
-            1.dp,
-            if (selected) NeveraChefColors.Blue else NeveraChefColors.Line,
-        ),
-        modifier = modifier.height(38.dp),
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        color = Color.White,
+        shadowElevation = 8.dp,
     ) {
-        Box(contentAlignment = Alignment.Center) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                painter = painterResource(Res.drawable.ic_nc_trash),
+                contentDescription = null,
+                tint = Color(0xFFE03131),
+                modifier = Modifier.size(22.dp),
+            )
             Text(
-                text = text,
-                color = if (selected) NeveraChefColors.Blue else NeveraChefColors.Muted,
-                fontSize = 12.sp,
+                text = "$count seleccionados",
+                color = Color(0xFF1D1B20),
+                fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
-                textAlign = TextAlign.Center,
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(onClick = onCancel) {
+                Text("Cancelar")
+            }
+            Surface(
+                onClick = onDelete,
+                shape = RoundedCornerShape(16.dp),
+                color = Color(0xFFFCE6E6),
+            ) {
+                Text(
+                    text = "Eliminar",
+                    color = Color(0xFFE03131),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SectionHeader(location: PantryLocation, count: Int) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp, bottom = 2.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+            LocationGlyph(location = location, containerSize = 34.dp, iconSize = 22.dp)
+            Text(
+                text = location.title,
+                color = Color(0xFF042D1F),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+        Box(
+            modifier = Modifier
+                .background(
+                    when (location) {
+                        PantryLocation.FRIDGE -> Color(0xFFE8F4E8)
+                        PantryLocation.PANTRY -> Color(0xFFF9F0DE)
+                        PantryLocation.FREEZER -> Color(0xFFE5ECFB)
+                    },
+                    RoundedCornerShape(14.dp),
+                )
+                .padding(horizontal = 11.dp, vertical = 5.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = count.toString(),
+                color = when (location) {
+                    PantryLocation.FRIDGE -> Color(0xFF0D6B57)
+                    PantryLocation.PANTRY -> Color(0xFF9A6310)
+                    PantryLocation.FREEZER -> Color(0xFF2C6DC7)
+                },
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold,
             )
         }
     }
 }
 
 @Composable
-private fun ExpirationInfo(
-    expiryDateIso: String?,
-    expiryLabel: String?,
+private fun LocationGlyph(
+    location: PantryLocation,
+    containerSize: Dp,
+    iconSize: Dp,
 ) {
-    val relative = getExpirationText(expiryDateIso)
-    val fallback = expiryLabel?.trim().orEmpty().ifBlank { null }
-    val subtitle = relative ?: fallback ?: return
-    val priority =
-        if (relative != null) expirationPriority(expiryDateIso) else ExpirationPriority.UNKNOWN
-
-    val title = when (priority) {
-        ExpirationPriority.EXPIRED -> "Caducado"
-        ExpirationPriority.SOON -> "Caduca pronto"
-        ExpirationPriority.NORMAL -> "Caduca"
-        ExpirationPriority.UNKNOWN -> "Caduca"
+    Box(
+        modifier = Modifier
+            .size(containerSize)
+            .background(locationBackground(location), RoundedCornerShape(12.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            painter = painterResource(locationIcon(location)),
+            contentDescription = null,
+            tint = locationTint(location),
+            modifier = Modifier.size(iconSize),
+        )
     }
-    val titleColor = when (priority) {
-        ExpirationPriority.EXPIRED -> Color(0xFFB42318)
-        ExpirationPriority.SOON -> Color(0xFFB54708)
-        else -> NeveraChefColors.Muted
-    }
+}
 
-    Column(
-        horizontalAlignment = Alignment.End,
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+private fun locationIcon(location: PantryLocation): DrawableResource {
+    return when (location) {
+        PantryLocation.FRIDGE -> Res.drawable.ic_nc_fridge
+        PantryLocation.PANTRY -> Res.drawable.ic_nc_pantry
+        PantryLocation.FREEZER -> Res.drawable.ic_nc_freezer
+    }
+}
+
+private fun locationBackground(location: PantryLocation): Color {
+    return when (location) {
+        PantryLocation.FRIDGE -> Color(0xFFE8F4E8)
+        PantryLocation.PANTRY -> Color(0xFFF9F0DE)
+        PantryLocation.FREEZER -> Color(0xFFE5ECFB)
+    }
+}
+
+private fun locationTint(location: PantryLocation): Color {
+    return when (location) {
+        PantryLocation.FRIDGE -> Color(0xFF007A53)
+        PantryLocation.PANTRY -> Color(0xFFB17413)
+        PantryLocation.FREEZER -> Color(0xFF1767C5)
+    }
+}
+
+@Composable
+private fun PantryItemCard(
+    food: PantryFoodUi,
+    selectionMode: Boolean,
+    selected: Boolean,
+    reminderDays: Int,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    onSelectedChange: (Boolean) -> Unit,
+) {
+    Surface(
+        color = Color.White,
+        shape = RoundedCornerShape(22.dp),
+        shadowElevation = 2.dp,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 6.dp)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick,
+            ),
     ) {
         Row(
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (priority == ExpirationPriority.SOON || priority == ExpirationPriority.EXPIRED) {
-                Icon(
-                    painter = painterResource(Res.drawable.ic_expiry),
-                    contentDescription = null,
-                    tint = Color.Unspecified,
-                    modifier = Modifier.size(20.dp),
+            if (selectionMode) {
+                Checkbox(
+                    checked = selected,
+                    onCheckedChange = onSelectedChange,
+                    colors = CheckboxDefaults.colors(
+                        checkedColor = Color(0xFF0B8E5F),
+                        checkmarkColor = Color.White,
+                        uncheckedColor = Color(0xFF9AA0AE),
+                    ),
+                    modifier = Modifier.size(24.dp),
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(54.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Image(
+                        painter = painterResource(food.iconRes),
+                        contentDescription = food.name,
+                        modifier = Modifier.size(54.dp),
+                    )
+                }
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    food.name,
+                    color = Color(0xFF141923),
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    food.quantity,
+                    color = Color(0xFF2A2F3D),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Normal,
                 )
             }
-            Text(
-                text = title,
-                color = titleColor,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-            )
+            ExpiryPill(food = food, reminderDays = reminderDays)
+            if (!selectionMode) {
+                Icon(
+                    painter = painterResource(Res.drawable.ic_nc_arrow_back),
+                    contentDescription = null,
+                    tint = Color(0xFF808492),
+                    modifier = Modifier
+                        .size(20.dp)
+                        .graphicsLayer { rotationZ = 180f },
+                )
+            }
         }
+    }
+}
+
+@Composable
+private fun ExpiryPill(
+    food: PantryFoodUi,
+    reminderDays: Int,
+) {
+    val days = daysUntilExpiry(food.expiryDateIso) ?: parseDaysFromLabel(food.expiryLabel) ?: return
+    if (days > reminderDays) return
+
+    val background = when {
+        days < 0 -> Color(0xFFFCE6E6)
+        days <= 1 -> Color(0xFFFCE6E6)
+        else -> Color(0xFFFBEED8)
+    }
+    val textColor = when {
+        days < 0 -> Color(0xFFE03131)
+        days <= 1 -> Color(0xFFE03131)
+        else -> Color(0xFFA15F08)
+    }
+    val text = when {
+        days < 0 -> if (days == -1) "Caducado ayer" else "Caducado hace ${-days} días"
+        days == 0 -> "Caduca hoy"
+        days == 1 -> "Caduca mañana"
+        else -> "Caduca en $days días"
+    }
+
+    Box(
+        modifier = Modifier
+            .background(background, RoundedCornerShape(14.dp))
+            .padding(horizontal = 10.dp, vertical = 5.dp),
+    ) {
         Text(
-            text = subtitle,
-            color = if (priority == ExpirationPriority.NORMAL || priority == ExpirationPriority.UNKNOWN) NeveraChefColors.Muted else titleColor.copy(
-                alpha = 0.9f
-            ),
-            fontSize = 10.sp,
+            text = text,
+            color = textColor,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
             maxLines = 1,
         )
     }
 }
 
-@Composable
-private fun LocationSummaryItem(
-    iconRes: DrawableResource,
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier
-            .background(Color.Black.copy(alpha = 0.08f), RoundedCornerShape(16.dp))
-            .padding(horizontal = 10.dp, vertical = 9.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                painter = painterResource(iconRes),
-                contentDescription = null,
-                tint = if (iconRes == Res.drawable.ic_cat_frozen) Color.Unspecified else Color.Black.copy(
-                    alpha = 0.92f
-                ),
-                modifier = Modifier.size(if (iconRes == Res.drawable.ic_cat_frozen) 22.dp else 16.dp),
-            )
-            Text(
-                label,
-                color = Color.Black.copy(alpha = 0.82f),
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        Text(value, color = Color.Black, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-    }
+private fun parseDaysFromLabel(expiryLabel: String?): Int? {
+    val label = expiryLabel?.trim().orEmpty()
+    if (label.isBlank()) return null
+    if (!label.contains("día", ignoreCase = true)) return null
+    return Regex("(\\d+)").find(label)?.groupValues?.getOrNull(1)?.toIntOrNull()
 }
 
-private fun PantryFoodRecord.toUi(): PantryFoodUi {
-    val quantityLabel = if (quantity.isNotBlank()) {
-        quantity
+internal fun pantryFoodRecordToUi(record: PantryFoodRecord): PantryFoodUi {
+    val quantityLabel = if (record.quantity.isNotBlank()) {
+        record.quantity
     } else {
-        listOf(quantityValue, quantityUnit).filter { it.isNotBlank() }.joinToString(" ")
+        listOf(record.quantityValue, record.quantityUnit).filter { it.isNotBlank() }.joinToString(" ")
     }
     return PantryFoodUi(
-        id = id,
-        name = name,
+        id = record.id,
+        name = record.name,
         quantity = quantityLabel,
-        category = category,
-        location = when (locationKey) {
+        category = record.category,
+        location = when (record.locationKey) {
             "fridge" -> PantryLocation.FRIDGE
             "freezer" -> PantryLocation.FREEZER
             else -> PantryLocation.PANTRY
         },
-        expiryLabel = expiryLabel,
-        expiryDateIso = expiryDateIso,
-        iconKey = iconKey,
-        iconRes = pantryIconResource(iconKey),
+        expiryLabel = record.expiryLabel,
+        expiryDateIso = record.expiryDateIso,
+        iconKey = record.iconKey,
+        iconRes = pantryIconResource(record.iconKey),
     )
 }
 
-private fun pantryIconResource(iconKey: String): DrawableResource {
+internal fun pantryIconResource(iconKey: String): DrawableResource {
     return when (iconKey) {
-        "egg" -> Res.drawable.ic_cat_eggs
-        "fish" -> Res.drawable.ic_cat_fish
+        "egg", "eggs" -> Res.drawable.ref_food_eggs
+        "fish" -> Res.drawable.ref_food_fish
         "fruits" -> Res.drawable.ic_cat_fruits
         "meat" -> Res.drawable.ic_cat_meat
         "milk" -> Res.drawable.ic_cat_milk
-        "lentils" -> Res.drawable.ic_cat_pasta_rice_legumes
-        "rice" -> Res.drawable.ic_cat_pasta_rice_legumes
-        "spinach" -> Res.drawable.ic_cat_vegetables
+        "lentils" -> Res.drawable.ref_food_lentils
+        "rice" -> Res.drawable.ref_food_rice
+        "spinach", "vegetables" -> Res.drawable.ref_food_spinach
         else -> Res.drawable.ic_cat_vegetables
     }
 }

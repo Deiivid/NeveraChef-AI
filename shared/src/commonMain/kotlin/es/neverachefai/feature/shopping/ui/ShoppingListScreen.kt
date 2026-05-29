@@ -32,9 +32,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import es.neverachefai.core.persistence.LocalAppContentStore
-import es.neverachefai.core.persistence.PantryFoodRecord
-import es.neverachefai.core.persistence.ShoppingItemRecord
+import es.neverachefai.feature.pantry.data.PantryRepositoryImpl
+import es.neverachefai.feature.pantry.domain.model.PantryFood
+import es.neverachefai.feature.shopping.data.ShoppingRepositoryImpl
+import es.neverachefai.feature.shopping.domain.model.ShoppingListItem
 import neverachefai.shared.generated.resources.Res
 import neverachefai.shared.generated.resources.ic_cat_beer
 import neverachefai.shared.generated.resources.ic_cat_bread
@@ -95,9 +96,11 @@ private data class ShoppingListItemUi(
 fun ShoppingListScreen(
     onAddProductClick: () -> Unit = {},
 ) {
+    val shoppingRepository = remember { ShoppingRepositoryImpl() }
+    val pantryRepository = remember { PantryRepositoryImpl() }
     val items = remember {
         mutableStateListOf<ShoppingListItemUi>().apply {
-            addAll(LocalAppContentStore.loadShoppingItems().map { it.toUi() })
+            addAll(shoppingRepository.loadItems().map { it.toUi() })
         }
     }
 
@@ -137,7 +140,7 @@ fun ShoppingListScreen(
                     item = item,
                     onCheckedChange = { checked ->
                         items[index] = item.copy(checked = checked)
-                        LocalAppContentStore.saveShoppingItems(items.map { it.toRecord() })
+                        shoppingRepository.saveItems(items.map { it.toDomain() })
                     },
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -150,7 +153,7 @@ fun ShoppingListScreen(
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(18.dp))
                         .background(Color(0xFFE9F7EF))
-                        .clickable { finalizeCheckedItems(items) }
+                        .clickable { finalizeCheckedItems(items, shoppingRepository, pantryRepository) }
                         .padding(vertical = 14.dp),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -332,12 +335,9 @@ private fun ShoppingListRow(
     }
 }
 
-private fun ShoppingItemRecord.toUi(): ShoppingListItemUi {
+private fun ShoppingListItem.toUi(): ShoppingListItemUi {
     val normalizedIconKey = normalizeIconKey(iconKey, category, name)
-    val quantityLabel = if (quantity.isNotBlank()) quantity else listOf(
-        quantityValue,
-        quantityUnit
-    ).filter { it.isNotBlank() }.joinToString(" ")
+    val quantityLabel = if (quantity.isNotBlank()) quantity else listOf(quantityValue, quantityUnit).filter { it.isNotBlank() }.joinToString(" ")
     return ShoppingListItemUi(
         id = id,
         name = name,
@@ -351,8 +351,8 @@ private fun ShoppingItemRecord.toUi(): ShoppingListItemUi {
     )
 }
 
-private fun ShoppingListItemUi.toRecord(): ShoppingItemRecord {
-    return ShoppingItemRecord(
+private fun ShoppingListItemUi.toDomain(): ShoppingListItem {
+    return ShoppingListItem(
         id = id,
         name = name,
         quantity = quantity,
@@ -365,29 +365,33 @@ private fun ShoppingListItemUi.toRecord(): ShoppingItemRecord {
     )
 }
 
-private fun finalizeCheckedItems(items: MutableList<ShoppingListItemUi>) {
+private fun moveItemToPantry(item: ShoppingListItemUi, pantryRepository: PantryRepositoryImpl) {
+    val pantryFoods = pantryRepository.loadFoods().toMutableList()
+    pantryFoods += PantryFood(
+        id = "pantry_${item.id}_${pantryFoods.size + 1}",
+        name = item.name,
+        quantity = item.quantity,
+        quantityValue = item.quantityValue,
+        quantityUnit = item.quantityUnit,
+        category = item.iconKey,
+        locationKey = item.destinationKey,
+        expiryLabel = null,
+        expiryDateIso = null,
+        iconKey = item.iconKey,
+    )
+    pantryRepository.saveFoods(pantryFoods)
+}
+
+private fun finalizeCheckedItems(
+    items: MutableList<ShoppingListItemUi>,
+    shoppingRepository: ShoppingRepositoryImpl,
+    pantryRepository: PantryRepositoryImpl,
+) {
     val checkedItems = items.filter { it.checked }
     if (checkedItems.isEmpty()) return
-
-    val pantryFoods = LocalAppContentStore.loadPantryFoods().toMutableList()
-    checkedItems.forEach { item ->
-        pantryFoods += PantryFoodRecord(
-            id = "pantry_${item.id}_${pantryFoods.size + 1}",
-            name = item.name,
-            quantity = item.quantity,
-            quantityValue = item.quantityValue,
-            quantityUnit = item.quantityUnit,
-            category = item.iconKey,
-            locationKey = item.destinationKey,
-            expiryLabel = null,
-            expiryDateIso = null,
-            iconKey = item.iconKey,
-        )
-    }
-
-    LocalAppContentStore.savePantryFoods(pantryFoods)
+    checkedItems.forEach { moveItemToPantry(it, pantryRepository) }
     items.removeAll { it.checked }
-    LocalAppContentStore.saveShoppingItems(items.map { it.toRecord() })
+    shoppingRepository.saveItems(items.map { it.toDomain() })
 }
 
 private fun normalizeIconKey(iconKey: String, category: String, name: String): String {

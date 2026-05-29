@@ -43,8 +43,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import es.neverachefai.core.designsystem.NeveraChefColors
 import es.neverachefai.core.preferences.AppPreferences
-
-private const val KEY_EXPIRY_REMINDER_DAYS = "settings.expiry_reminder_days"
+import es.neverachefai.feature.pantry.ui.loadExpiryReminderDays
+import es.neverachefai.feature.pantry.ui.KEY_EXPIRY_REMINDER_DAYS
 
 @Composable
 fun SettingsScreen(
@@ -392,14 +392,6 @@ private fun SectionTitle(text: String) {
         modifier = Modifier.padding(horizontal = 4.dp),
     )
 }
-
-private fun loadExpiryReminderDays(): Int {
-    return AppPreferences.getString(KEY_EXPIRY_REMINDER_DAYS)
-        ?.toIntOrNull()
-        ?.coerceIn(2, 5)
-        ?: 2
-}
-
 private val NeveraChefColors.Surface: Color
     get() = Color(0xFFFEF7FF)
 

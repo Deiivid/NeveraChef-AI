@@ -1,4 +1,4 @@
-package es.neverachefai.domain.model
+package es.neverachefai.feature.recipes.domain.model
 
 data class Recipe(
     val title: String,

@@ -1,5 +1,7 @@
 package es.neverachefai.feature.pantry.ui
 
+import es.neverachefai.core.preferences.AppPreferences
+
 enum class ExpirationPriority {
     EXPIRED,
     SOON,
@@ -8,6 +10,8 @@ enum class ExpirationPriority {
 }
 
 data class SimpleDate(val year: Int, val month: Int, val day: Int)
+
+const val KEY_EXPIRY_REMINDER_DAYS = "settings.expiry_reminder_days"
 
 fun getExpirationText(
     expiryDateIso: String?,
@@ -26,18 +30,33 @@ fun getExpirationText(
     }
 }
 
+fun daysUntilExpiry(
+    expiryDateIso: String?,
+    todayIso: String = platformTodayIsoDate(),
+): Int? {
+    val expirationDate = parseIsoDate(expiryDateIso) ?: return null
+    val today = parseIsoDate(todayIso) ?: return null
+    return daysBetween(today, expirationDate)
+}
+
 fun expirationPriority(
     expiryDateIso: String?,
     todayIso: String = platformTodayIsoDate(),
+    warningDays: Int = 1,
 ): ExpirationPriority {
-    val expirationDate = parseIsoDate(expiryDateIso) ?: return ExpirationPriority.UNKNOWN
-    val today = parseIsoDate(todayIso) ?: return ExpirationPriority.UNKNOWN
-    val days = daysBetween(today, expirationDate)
+    val days = daysUntilExpiry(expiryDateIso, todayIso) ?: return ExpirationPriority.UNKNOWN
     return when {
         days < 0 -> ExpirationPriority.EXPIRED
-        days <= 1 -> ExpirationPriority.SOON
+        days <= warningDays -> ExpirationPriority.SOON
         else -> ExpirationPriority.NORMAL
     }
+}
+
+fun loadExpiryReminderDays(defaultDays: Int = 2): Int {
+    return AppPreferences.getString(KEY_EXPIRY_REMINDER_DAYS)
+        ?.toIntOrNull()
+        ?.coerceIn(2, 5)
+        ?: defaultDays
 }
 
 fun parseIsoDate(value: String?): SimpleDate? {

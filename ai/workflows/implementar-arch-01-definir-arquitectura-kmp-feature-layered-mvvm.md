@@ -1,4 +1,4 @@
-# Workflow - Implement ARCH-01 Define KMP Feature-Layered MVVM Architecture
+# Workflow - Implement ARCH-01 KMP Feature-Layered Architecture
 
 ## Source
 
@@ -9,7 +9,7 @@
 
 ## Objective
 
-Define and implement the documentation and execution baseline for evolving NeveraChef AI into a KMP feature-layered MVVM architecture with independent features and clear folder-level rules.
+Define and implement the documentation baseline for evolving NeveraChef AI into a KMP feature-layered architecture with independent features and strict local layer rules.
 
 This workflow must not move product code unless the user explicitly asks for it.
 
@@ -17,8 +17,12 @@ This workflow must not move product code unless the user explicitly asks for it.
 
 - Architecture document created or updated.
 - Proposed folder structure for `shared`, `androidApp`, and `iosApp`.
-- Clear boundaries between `data`, `domain`, and `presentation`.
-- Clear dependency rules.
+- Clear boundaries between `data`, `domain`, and `ui`.
+- Strict dependency rule: `ui -> domain <- data`.
+- Per-feature domain; no global application `domain` layer.
+- Local storage behind `data` datasources.
+- `pantry` and `shopping` explicitly implemented as local-first `data + domain + ui`.
+- `recipes` explicitly prepared for AI with domain contracts and provider-facing `data`.
 - Complete feature example.
 - Strategy for root, module, and feature-level `AGENTS.md` files.
 - Compatible with Kotlin Multiplatform, Compose Multiplatform, and MVVM.
@@ -47,153 +51,126 @@ Create or update:
 
 - `ai/architecture/ARCH-01-kmp-feature-layered-mvvm.md`
 
-Optional, only if useful for later execution:
-
-- `ai/architecture/templates/AGENTS-root.md`
-- `ai/architecture/templates/AGENTS-feature.md`
-- `ai/architecture/templates/feature-structure.md`
-
 Do not create empty production feature folders during this task.
 
 ## Target Architecture
 
 ```text
-shared/
-  src/
-    commonMain/
-      kotlin/
-        es/neverachefai/
-          app/
-          core/
-            domain/
-            data/
-            presentation/
-            designsystem/
-            ui/
-          features/
-            inventory/
-              domain/
-              data/
-              presentation/
-              AGENTS.md
-            shopping/
-              domain/
-              data/
-              presentation/
-              AGENTS.md
-            recipes/
-              domain/
-              data/
-              presentation/
-              AGENTS.md
-            product/
-              domain/
-              data/
-              presentation/
-              AGENTS.md
-            settings/
-              domain/
-              data/
-              presentation/
-              AGENTS.md
-            localai/
-              domain/
-              data/
-              presentation/
-              AGENTS.md
-    androidMain/
-      kotlin/
-        es/neverachefai/
-          platform/
-    iosMain/
-      kotlin/
-        es/neverachefai/
-          platform/
-androidApp/
-iosApp/
-AGENTS.md
+shared/src/commonMain/kotlin/es/neverachefai/
+  app/
+  core/
+    designsystem/
+    persistence/
+    preferences/
+    ui/
+  feature/
+    home/
+      data/
+      domain/
+      ui/
+    pantry/
+      data/
+      domain/
+      ui/
+    recipes/
+      data/
+      domain/
+      ui/
+    shopping/
+      data/
+      domain/
+      ui/
+    settings/
+      data/
+      domain/
+      ui/
+    onboarding/
+      data/
+      domain/
+      ui/
+    navigation/
 ```
 
 ## Layer Rules
 
+### `ui`
+
+- Contains screens, ViewModels, state, events and effects.
+- Depends on feature `domain`.
+- Must not depend on feature `data`.
+- Must not call persistence, preferences, network, or AI providers directly.
+
 ### `domain`
 
 - Pure Kotlin.
-- Domain models, value objects, business rules, and useful use cases.
-- Repository contracts when persistence, AI, network, or platform behavior sits behind them.
-- Must not depend on Compose, Android, iOS, concrete storage, or external DTOs.
+- Per-feature only.
+- Contains models, use cases, validation, errors and repository interfaces.
+- Must not depend on `ui`, `data`, Compose, Android, iOS, persistence, network or provider SDKs.
+- There is no global application `shared/domain` layer.
 
 ### `data`
 
-- Implements repository contracts.
-- Contains datasources, internal DTOs, mappers, and adapters.
-- Can depend on `domain`.
-- Must not expose persistence, network, or provider details to `presentation`.
-
-### `presentation`
-
-- Contains `Screen`, `Route`, `UiState`, `Event`, `Effect`, and ViewModel/state holder files when needed.
-- Renders immutable state and emits events.
-- Must not call persistence, preferences, network, or AI providers directly.
-- Can depend on `domain`, `core/designsystem`, and `core/ui`.
+- Implements repository interfaces from `domain`.
+- Contains local datasources, remote datasources if needed, DTOs, mappers and persistence models.
+- Depends on feature `domain`.
+- Must not depend on feature `ui`.
+- Local data is stored through datasources in this layer.
+- For `recipes`, AI provider integration belongs in this layer.
 
 ### `core`
 
-- Contains only genuinely shared code.
-- Must not become a dumping ground for unclear ownership.
-- `core/designsystem` and `core/ui` contain reusable UI primitives.
-- `core/data`, `core/persistence`, or `core/preferences` must stay behind contracts.
-
-### Hosts
-
-- `androidApp` owns Android integration: Activity, manifest, permissions, wiring, and Android APIs.
-- `iosApp` owns iOS integration: SwiftUI host, lifecycle, and iOS wiring.
-- Product logic must not live in host modules.
+- Infrastructure and shared UI foundation only.
+- No feature-specific business logic.
+- No feature-specific models.
+- Features depend on `core`; `core` never depends on features.
 
 ## Dependency Rules
 
 Allowed:
 
 ```text
-app -> features
-features/presentation -> features/domain
-features/data -> features/domain
-features/presentation -> core/designsystem
-features/presentation -> core/ui
+app -> feature modules
+feature/<name>/ui -> feature/<name>/domain
+feature/<name>/data -> feature/<name>/domain
+feature/<name>/ui -> core/designsystem
+feature/<name>/ui -> core/ui
+feature/<name>/data -> core/persistence
+feature/<name>/data -> core/preferences
 platform source sets -> shared contracts
 ```
 
 Forbidden:
 
 ```text
-domain -> Compose
-domain -> Android/iOS APIs
-presentation -> persistence/provider directly
+feature/<name>/ui -> feature/<name>/data
+feature/<name>/data -> feature/<name>/ui
 feature A -> feature B internals
 shared/commonMain -> android.* / UIKit / Swift-only APIs
+domain -> Compose
+domain -> Android/iOS framework
 ```
 
 ## Feature Example
 
 ```text
-features/inventory/
-  AGENTS.md
-  domain/
-    InventoryItem.kt
-    InventoryLocation.kt
-    InventoryRepository.kt
-    ObserveInventoryItemsUseCase.kt
+feature/pantry/
+  PantryModule.kt
   data/
-    InventoryRepositoryImpl.kt
-    InventoryLocalDataSource.kt
-    InventoryItemMapper.kt
-  presentation/
-    InventoryRoute.kt
-    InventoryScreen.kt
-    InventoryUiState.kt
-    InventoryEvent.kt
-    InventoryEffect.kt
-    InventoryViewModel.kt
+    PantryRepositoryImpl.kt
+    PantryLocalDataSource.kt
+    dto/
+    mapper/
+  domain/
+    PantryRepository.kt
+    model/
+      PantryItem.kt
+    usecase/
+      GetPantryItemsUseCase.kt
+  ui/
+    PantryScreen.kt
+    PantryViewModel.kt
+    PantryState.kt
+    PantryEvent.kt
 ```
 
 Rule: create only files that add real behavior. Do not create classes for symmetry.
@@ -213,7 +190,7 @@ Defines global rules:
 
 ### Feature
 
-Each `features/<name>/AGENTS.md` must define:
+Each `feature/<name>/AGENTS.md` must define:
 
 - Feature responsibility.
 - Allowed layers.
@@ -223,15 +200,7 @@ Each `features/<name>/AGENTS.md` must define:
 - Minimum validation command.
 - Local Definition of Done.
 
-### Module Or Source Set
-
-Create only when real specific rules exist for:
-
-- `shared/src/commonMain`
-- `shared/src/androidMain`
-- `shared/src/iosMain`
-- `androidApp`
-- `iosApp`
+Create feature-level agent files only when the feature has meaningful local rules.
 
 ## Execution Phases
 
@@ -254,13 +223,14 @@ Expected internal output:
 Create `ai/architecture/ARCH-01-kmp-feature-layered-mvvm.md` with:
 
 - Objective.
-- Current state.
-- Target architecture.
-- Layer rules.
+- Project structure.
+- Strict layer rules.
 - Dependency rules.
+- Local-first data rule.
 - Feature example.
-- `AGENTS.md` strategy.
-- Incremental migration plan.
+- KMP rules.
+- Naming conventions.
+- Incremental migration notes.
 - Validation.
 
 ### 3. Incremental Migration Plan
@@ -268,12 +238,20 @@ Create `ai/architecture/ARCH-01-kmp-feature-layered-mvvm.md` with:
 The document must propose this migration sequence:
 
 1. Freeze architecture rules in documentation.
-2. Create `core/designsystem` and `core/ui` only when reusable components exist.
-3. Migrate `inventory` as the first pilot feature.
-4. Extract `shopping`, `recipes`, `product`, `settings`, and `localai` one by one.
-5. Keep hosts as integration layers.
-6. Add feature-level `AGENTS.md` files when each feature exists.
-7. Run validation after each small migration.
+2. Keep the current `feature/` root.
+3. Remove reliance on any global `domain/` package over time.
+4. Migrate one feature at a time.
+5. Establish feature `domain` first.
+6. Move persistence behind feature `data` datasources.
+7. Move screens and ViewModels into feature `ui`.
+8. Keep hosts as integration layers.
+9. Run validation after each small migration.
+
+Feature priority in this workflow:
+
+1. `pantry`: enforce local-first through `data` datasources and repository implementation.
+2. `shopping`: enforce local-first through `data` datasources and repository implementation.
+3. `recipes`: keep `ui -> domain` usage and isolate AI provider calls in `data`.
 
 ### 4. Scope Control
 
@@ -301,7 +279,7 @@ Not run: documentation-only change.
 If files are created under source code:
 
 ```bash
-./gradlew :shared:compileKotlinAndroid
+./gradlew :shared:compileAndroidMain
 ```
 
 If `androidApp` is touched:
@@ -318,7 +296,8 @@ Use this prompt to run ARCH-01:
 Execute ARCH-01 from ai/workflows/implementar-arch-01-definir-arquitectura-kmp-feature-layered-mvvm.md.
 Review Notion ARCH-01.
 Respect AGENTS.md.
-Create the KMP feature-layered MVVM architecture documentation for NeveraChef AI.
+Create the KMP feature-layered architecture documentation for NeveraChef AI.
+Use ui -> domain <- data.
 Do not move product code.
 Do not add dependencies.
 Do not create empty folders in source code.
@@ -332,7 +311,7 @@ Files:
 - ai/architecture/ARCH-01-kmp-feature-layered-mvvm.md
 
 Done:
-- ARCH-01 workflow/document created.
+- ARCH-01 architecture documentation created.
 
 Check:
 - Not run: documentation-only change.

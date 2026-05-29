@@ -1,4 +1,4 @@
-package es.neverachefai.domain.model
+package es.neverachefai.feature.shopping.domain.model
 
 data class ShoppingItem(
     val name: String,
