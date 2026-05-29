@@ -20,6 +20,7 @@ import es.neverachefai.feature.pantry.ui.FoodDetailScreen
 import es.neverachefai.feature.pantry.ui.IngredientReviewScreen
 import es.neverachefai.feature.pantry.ui.PantryFoodUi
 import es.neverachefai.feature.pantry.ui.PantryScreen
+import es.neverachefai.feature.pantry.ui.pantryFoodRecordToUi
 import es.neverachefai.feature.recipes.ui.RecipeDetailScreen
 import es.neverachefai.feature.recipes.ui.RecipeGenerationScreen
 import es.neverachefai.feature.recipes.ui.RecipeResultsScreen
@@ -40,6 +41,7 @@ fun NeveraChefApp(
     var currentTab by remember { mutableStateOf(MainTab.PANTRY) }
     var pantryFlow by remember { mutableStateOf(PantryFlow.LIST) }
     var selectedFood by remember { mutableStateOf<PantryFoodUi?>(null) }
+    var pantryFoods by remember { mutableStateOf(LocalAppContentStore.loadPantryFoods().map(::pantryFoodRecordToUi)) }
     var recipesFlow by remember { mutableStateOf(RecipesFlow.GENERATE) }
     var showAddShoppingProduct by remember { mutableStateOf(false) }
     var addShoppingState by remember { mutableStateOf(AddShoppingProductUiState()) }
@@ -56,6 +58,7 @@ fun NeveraChefApp(
         currentTab = MainTab.PANTRY
         pantryFlow = PantryFlow.LIST
         selectedFood = null
+        pantryFoods = LocalAppContentStore.loadPantryFoods().map(::pantryFoodRecordToUi)
         recipesFlow = RecipesFlow.GENERATE
         showAddShoppingProduct = false
         addShoppingState = AddShoppingProductUiState()
@@ -72,11 +75,23 @@ fun NeveraChefApp(
                 when (currentTab) {
                     MainTab.PANTRY -> when (pantryFlow) {
                         PantryFlow.LIST -> PantryScreen(
+                            foods = pantryFoods,
                             onAdd = { pantryFlow = PantryFlow.ADD },
                             onReview = { pantryFlow = PantryFlow.REVIEW },
                             onFoodClick = {
                                 selectedFood = it
                                 pantryFlow = PantryFlow.DETAIL
+                            },
+                            onDeleteFoods = { ids ->
+                                if (ids.isNotEmpty()) {
+                                    LocalAppContentStore.deletePantryFoods(ids)
+                                    val current = LocalAppContentStore.loadPantryFoods().toMutableList()
+                                    pantryFoods = current.map(::pantryFoodRecordToUi)
+                                    if (selectedFood?.id in ids) {
+                                        selectedFood = null
+                                        pantryFlow = PantryFlow.LIST
+                                    }
+                                }
                             },
                         )
 
@@ -103,6 +118,7 @@ fun NeveraChefApp(
                                         expiryDateIso = updated.expiryDateIso,
                                     )
                                     LocalAppContentStore.savePantryFoods(current)
+                                    pantryFoods = current.map(::pantryFoodRecordToUi)
                                 }
                             },
                             onGenerateRecipe = {

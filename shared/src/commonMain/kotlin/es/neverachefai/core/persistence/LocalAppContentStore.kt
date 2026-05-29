@@ -35,12 +35,22 @@ data class ShoppingItemRecord(
 object LocalAppContentStore {
     fun loadPantryFoods(): List<PantryFoodRecord> {
         val stored = decodePantryFoods(AppPreferences.getString(PANTRY_FOODS_KEY))
-        if (stored != null) return stored
+        if (stored != null) {
+            val migrated = migrateDefaultPantryFoods(stored)
+            if (migrated != stored) savePantryFoods(migrated)
+            return migrated
+        }
         return defaultPantryFoods().also { savePantryFoods(it) }
     }
 
     fun savePantryFoods(foods: List<PantryFoodRecord>) {
         AppPreferences.setString(PANTRY_FOODS_KEY, encodePantryFoods(foods))
+    }
+
+    fun deletePantryFoods(ids: Set<String>) {
+        if (ids.isEmpty()) return
+        val remaining = loadPantryFoods().filterNot { it.id in ids }
+        savePantryFoods(remaining)
     }
 
     fun loadShoppingItems(): List<ShoppingItemRecord> {
@@ -54,12 +64,11 @@ object LocalAppContentStore {
     }
 
     private fun defaultPantryFoods(): List<PantryFoodRecord> = listOf(
-        PantryFoodRecord("1", "Espinacas", "1 bolsa", "1", "bolsa", "Verdura", "fridge", "mañana", null, "spinach"),
-        PantryFoodRecord("2", "Huevos", "6 uds", "6", "uds", "Proteína", "fridge", "2 días", null, "egg"),
-        PantryFoodRecord("3", "Arroz integral", "1 kg", "1", "kg", "Cereal", "pantry", "bajo", null, "rice"),
-        PantryFoodRecord("4", "Lentejas", "500 g", "500", "g", "Legumbre", "pantry", "ok", null, "lentils"),
-        PantryFoodRecord("5", "Filetes de pescado", "2 uds", "2", "uds", "Proteína", "freezer", "20 días", null, "fish"),
-        PantryFoodRecord("6", "Caldo casero", "1 litro", "1", "litro", "Preparado", "freezer", "1 mes", null, "soup"),
+        PantryFoodRecord("1", "Espinacas", "1 bolsa", "1", "bolsa", "Verdura", "fridge", "Caduca en 2 días", null, "spinach"),
+        PantryFoodRecord("2", "Huevos", "6 uds", "6", "uds", "Proteína", "fridge", "Quedan 10 días", null, "eggs"),
+        PantryFoodRecord("3", "Arroz integral", "1 kg", "1", "kg", "Cereal", "pantry", "Perenne", null, "rice"),
+        PantryFoodRecord("4", "Lentejas", "500 g", "500", "g", "Legumbre", "pantry", "Perenne", null, "lentils"),
+        PantryFoodRecord("5", "Filetes de pescado", "2 uds", "2", "uds", "Proteína", "freezer", "Quedan 3 meses", null, "fish"),
     )
 
     private fun defaultShoppingItems(): List<ShoppingItemRecord> = listOf(
@@ -70,6 +79,21 @@ object LocalAppContentStore {
         ShoppingItemRecord("fish", "Filetes de pescado", "2 uds", "2", "uds", false, "proteina", "freezer", "fish"),
         ShoppingItemRecord("stock", "Caldo casero", "1 litro", "1", "litro", false, "preparado", "freezer", "soup"),
     )
+
+    private fun migrateDefaultPantryFoods(foods: List<PantryFoodRecord>): List<PantryFoodRecord> {
+        return foods
+            .filterNot { it.id == "6" && it.name == "Caldo casero" }
+            .map { food ->
+                when {
+                    food.id == "1" && food.name == "Espinacas" -> food.copy(expiryLabel = "Caduca en 2 días", iconKey = "spinach")
+                    food.id == "2" && food.name == "Huevos" -> food.copy(expiryLabel = "Quedan 10 días", iconKey = "eggs")
+                    food.id == "3" && food.name == "Arroz integral" -> food.copy(expiryLabel = "Perenne", iconKey = "rice")
+                    food.id == "4" && food.name == "Lentejas" -> food.copy(expiryLabel = "Perenne", iconKey = "lentils")
+                    food.id == "5" && food.name == "Filetes de pescado" -> food.copy(expiryLabel = "Quedan 3 meses", iconKey = "fish")
+                    else -> food
+                }
+            }
+    }
 
     private fun encodePantryFoods(foods: List<PantryFoodRecord>): String {
         return buildString {
