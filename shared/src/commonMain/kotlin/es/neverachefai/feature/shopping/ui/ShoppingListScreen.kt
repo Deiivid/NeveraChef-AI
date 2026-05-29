@@ -1,5 +1,6 @@
 package es.neverachefai.feature.shopping.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,19 +19,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -73,10 +64,20 @@ import neverachefai.shared.generated.resources.ic_cat_vegetables
 import neverachefai.shared.generated.resources.ic_cat_water_bottle
 import neverachefai.shared.generated.resources.ic_cat_wine
 import neverachefai.shared.generated.resources.ic_cat_yogurts
+import neverachefai.shared.generated.resources.ic_nc_check_square
 import neverachefai.shared.generated.resources.ic_nc_plus
-import neverachefai.shared.generated.resources.ic_nc_trash
+import neverachefai.shared.generated.resources.ic_nc_shopping_basket
+import neverachefai.shared.generated.resources.ref_shopping_hero_basket
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
+
+private val Ink = Color(0xFF03291E)
+private val Muted = Color(0xFF4E5561)
+private val SoftLine = Color(0xFFDDE2DE)
+private val CardLine = Color(0xFFE6E8EB)
+private val Green = Color(0xFF0A7A4B)
+private val GreenSoft = Color(0xFFE8F3E8)
+private val FabGreen = Color(0xFF037646)
 
 private data class ShoppingListItemUi(
     val id: String,
@@ -100,72 +101,78 @@ fun ShoppingListScreen(
         }
     }
 
+    val addedCount = items.size
+    val markedCount = items.count { it.checked }
+
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .padding(start = 4.dp, end = 4.dp, top = 26.dp, bottom = 8.dp),
         ) {
-            ShoppingSummaryCard(items = items)
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Text(
-                text = "Lista",
-                color = Color(0xFF1D1B20),
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                lineHeight = 26.sp,
-            )
-
+            ShoppingHeader(addedCount = addedCount)
             Spacer(modifier = Modifier.height(12.dp))
 
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                MetricChip(
+                    icon = Res.drawable.ic_nc_shopping_basket,
+                    text = "$addedCount añadidos",
+                    modifier = Modifier.weight(1f),
+                )
+                MetricChip(
+                    icon = null,
+                    text = "$markedCount marcado${if (markedCount == 1) "" else "s"}",
+                    modifier = Modifier.weight(1f),
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
             items.forEachIndexed { index, item ->
-                SwipeableShoppingListRow(
+                ShoppingListRow(
                     item = item,
                     onCheckedChange = { checked ->
                         items[index] = item.copy(checked = checked)
                         LocalAppContentStore.saveShoppingItems(items.map { it.toRecord() })
                     },
-                    onRemove = {
-                        items.removeAt(index)
-                        LocalAppContentStore.saveShoppingItems(items.map { it.toRecord() })
-                    },
                 )
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
             }
 
             if (items.any { it.checked }) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Button(
-                    onClick = {
-                        finalizeCheckedItems(items)
-                    },
+                Spacer(modifier = Modifier.height(6.dp))
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(52.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF004BCA)),
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(Color(0xFFE9F7EF))
+                        .clickable { finalizeCheckedItems(items) }
+                        .padding(vertical = 14.dp),
+                    contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         text = "Finalizar compra",
-                        color = Color.White,
+                        color = Green,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(96.dp))
+            Spacer(modifier = Modifier.height(120.dp))
         }
 
         Box(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(end = 20.dp, bottom = 20.dp)
-                .size(56.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(Color(0xFF004BCA))
+                .padding(end = 18.dp, bottom = 22.dp)
+                .size(62.dp)
+                .clip(CircleShape)
+                .background(FabGreen)
                 .clickable(onClick = onAddProductClick),
             contentAlignment = Alignment.Center,
         ) {
@@ -173,105 +180,53 @@ fun ShoppingListScreen(
                 painter = painterResource(Res.drawable.ic_nc_plus),
                 contentDescription = "Añadir producto",
                 tint = Color.White,
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(30.dp),
             )
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SwipeableShoppingListRow(
-    item: ShoppingListItemUi,
-    onCheckedChange: (Boolean) -> Unit,
-    onRemove: () -> Unit,
-) {
-    val dismissState = rememberSwipeToDismissBoxState()
-
-    if (dismissState.currentValue != SwipeToDismissBoxValue.Settled) {
-        LaunchedEffect(dismissState.currentValue) {
-            onCheckedChange(!item.checked)
-            dismissState.snapTo(SwipeToDismissBoxValue.Settled)
-        }
-    }
-
-    SwipeToDismissBox(
-        state = dismissState,
-        enableDismissFromStartToEnd = true,
-        enableDismissFromEndToStart = true,
-        backgroundContent = {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFFDEE2ED))
-                    .padding(horizontal = 16.dp),
-                contentAlignment = Alignment.CenterStart,
-            ) {
-                Text(
-                    text = "Marcar",
-                    color = Color(0xFF004BCA),
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
-        },
-    ) {
-        ShoppingListRow(
-            item = item,
-            onCheckedChange = onCheckedChange,
-            onRemove = onRemove,
-        )
-    }
-}
-
-@Composable
-private fun ShoppingSummaryCard(items: List<ShoppingListItemUi>) {
-    val added = items.size
-    val marked = items.count { it.checked }
-    val pending = added - marked
-
-    Column(
+private fun ShoppingHeader(addedCount: Int) {
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFFFEF3C7))
-            .padding(12.dp),
+
     ) {
-        Text(
-            text = "Lista de Compra",
-            color = Color(0xFF1D1B20),
-            fontSize = 28.sp,
-            lineHeight = 30.sp,
-            fontWeight = FontWeight.Bold,
-        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp)
+                .height(148.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Text(
+                    text = "Lista de compra",
+                    color = Ink,
+                    fontSize = 26.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "$addedCount añadidos",
+                    color = Ink,
+                    fontSize = 17.sp,
+                    lineHeight = 20.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MetricChip(
-                value = added,
-                label = "AÑADIDOS",
-                background = Color.White,
-                valueColor = Color(0xFF1D1B20),
-                labelColor = Color(0xFF92400E),
-                modifier = Modifier.weight(1f),
-            )
-            MetricChip(
-                value = pending,
-                label = "PENDIENTES",
-                background = Color(0xFFE0F2FE),
-                valueColor = Color(0xFF0284C7),
-                labelColor = Color(0xFF0369A1),
-                modifier = Modifier.weight(1f),
-            )
-            MetricChip(
-                value = marked,
-                label = "MARCADOS",
-                background = Color(0xFFDCFCE7),
-                valueColor = Color(0xFF15803D),
-                labelColor = Color(0xFF166534),
-                modifier = Modifier.weight(1f),
+            Image(
+                painter = painterResource(Res.drawable.ref_shopping_hero_basket),
+                contentDescription = null,
+                modifier = Modifier
+                    .padding(start = 8.dp)
+                    .size(width = 150.dp, height = 174.dp),
             )
         }
     }
@@ -279,33 +234,33 @@ private fun ShoppingSummaryCard(items: List<ShoppingListItemUi>) {
 
 @Composable
 private fun MetricChip(
-    value: Int,
-    label: String,
-    background: Color,
-    valueColor: Color,
-    labelColor: Color,
+    icon: DrawableResource?,
+    text: String,
     modifier: Modifier = Modifier,
 ) {
-    Column(
+    Row(
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(background)
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+            .height(48.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .border(1.dp, SoftLine, RoundedCornerShape(28.dp))
+            .padding(horizontal = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (icon != null) {
+            Icon(
+                painter = painterResource(icon),
+                contentDescription = null,
+                tint = Ink,
+                modifier = Modifier.size(18.dp),
+            )
+        }
         Text(
-            text = value.toString(),
-            color = valueColor,
-            fontSize = 22.sp,
-            lineHeight = 28.sp,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Text(
-            text = label,
-            color = labelColor,
-            fontSize = 11.sp,
-            lineHeight = 16.sp,
-            fontWeight = FontWeight.SemiBold,
+            text = text,
+            color = Ink,
+            fontSize = 14.sp,
+            lineHeight = 18.sp,
+            fontWeight = FontWeight.Medium,
         )
     }
 }
@@ -314,90 +269,81 @@ private fun MetricChip(
 private fun ShoppingListRow(
     item: ShoppingListItemUi,
     onCheckedChange: (Boolean) -> Unit,
-    onRemove: () -> Unit,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(if (item.checked) Color(0xFFF8F2F9) else Color.White)
-            .border(1.dp, Color(0xFFE6E1E8), RoundedCornerShape(12.dp))
-            .padding(12.dp),
+            .clip(RoundedCornerShape(18.dp))
+            .background(if (item.checked) Color(0xFFF5FAF5) else Color.White)
+            .border(1.dp, CardLine, RoundedCornerShape(18.dp))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Checkbox(
-            checked = item.checked,
-            onCheckedChange = onCheckedChange,
-            modifier = Modifier.size(24.dp),
-            colors = CheckboxDefaults.colors(
-                checkedColor = Color(0xFF004BCA),
-                checkmarkColor = Color.White,
-                uncheckedColor = Color(0xFF737687),
-            ),
-        )
-
-        Spacer(modifier = Modifier.width(12.dp))
-
         Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-                .background(Color.Transparent),
+            modifier = Modifier.size(32.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(
-                painter = painterResource(item.iconRes),
-                contentDescription = item.name,
-                tint = Color.Unspecified,
-                modifier = Modifier.size(34.dp),
-            )
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .background(if (item.checked) Green else Color.White)
+                    .border(1.dp, if (item.checked) Green else Color(0xFF5A616D), CircleShape)
+                    .clickable { onCheckedChange(!item.checked) },
+                contentAlignment = Alignment.Center,
+            ) {
+                if (item.checked) {
+                    Text(
+                        text = "✓",
+                        color = Color.White,
+                        fontSize = 18.sp,
+                        lineHeight = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
         }
 
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(10.dp))
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = item.name,
-                color = if (item.checked) Color(0xFF737687) else Color(0xFF1D1B20),
-                fontSize = 16.sp,
-                lineHeight = 20.sp,
+                color = if (item.checked) Color(0xFF5D8B6E) else Ink,
+                fontSize = 15.sp,
+                lineHeight = 19.sp,
                 fontWeight = FontWeight.SemiBold,
                 textDecoration = if (item.checked) TextDecoration.LineThrough else TextDecoration.None,
             )
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = item.quantity,
-                color = Color(0xFF424656),
-                fontSize = 14.sp,
-                lineHeight = 20.sp,
+                color = Muted,
+                fontSize = 12.sp,
+                lineHeight = 16.sp,
             )
         }
 
-        IconButton(
-            onClick = onRemove,
-            modifier = Modifier.size(40.dp),
-        ) {
-            Icon(
-                painter = painterResource(Res.drawable.ic_nc_trash),
-                contentDescription = "Eliminar ${item.name}",
-                tint = Color(0xFF737687),
-                modifier = Modifier.size(22.dp),
-            )
-        }
+        Image(
+            painter = painterResource(item.iconRes),
+            contentDescription = item.name,
+            modifier = Modifier.size(52.dp),
+        )
     }
 }
 
 private fun ShoppingItemRecord.toUi(): ShoppingListItemUi {
-    val quantityLabel = if (quantity.isNotBlank()) {
-        quantity
-    } else {
-        listOf(quantityValue, quantityUnit).filter { it.isNotBlank() }.joinToString(" ")
-    }
+    val normalizedIconKey = normalizeIconKey(iconKey, category, name)
+    val quantityLabel = if (quantity.isNotBlank()) quantity else listOf(
+        quantityValue,
+        quantityUnit
+    ).filter { it.isNotBlank() }.joinToString(" ")
     return ShoppingListItemUi(
         id = id,
         name = name,
         quantity = quantityLabel,
-        iconRes = iconKey.toCategoryIconResource(),
-        iconKey = iconKey,
+        iconRes = normalizedIconKey.toCategoryIconResource(),
+        iconKey = normalizedIconKey,
         destinationKey = destinationKey,
         quantityValue = quantityValue,
         quantityUnit = quantityUnit,
@@ -419,29 +365,78 @@ private fun ShoppingListItemUi.toRecord(): ShoppingItemRecord {
     )
 }
 
-private fun moveItemToPantry(item: ShoppingListItemUi) {
-    val pantryFoods = LocalAppContentStore.loadPantryFoods().toMutableList()
-    pantryFoods += PantryFoodRecord(
-        id = "pantry_${item.id}_${pantryFoods.size + 1}",
-        name = item.name,
-        quantity = item.quantity,
-        quantityValue = item.quantityValue,
-        quantityUnit = item.quantityUnit,
-        category = item.iconKey,
-        locationKey = item.destinationKey,
-        expiryLabel = null,
-        expiryDateIso = null,
-        iconKey = item.iconKey,
-    )
-    LocalAppContentStore.savePantryFoods(pantryFoods)
-}
-
 private fun finalizeCheckedItems(items: MutableList<ShoppingListItemUi>) {
     val checkedItems = items.filter { it.checked }
     if (checkedItems.isEmpty()) return
-    checkedItems.forEach { moveItemToPantry(it) }
+
+    val pantryFoods = LocalAppContentStore.loadPantryFoods().toMutableList()
+    checkedItems.forEach { item ->
+        pantryFoods += PantryFoodRecord(
+            id = "pantry_${item.id}_${pantryFoods.size + 1}",
+            name = item.name,
+            quantity = item.quantity,
+            quantityValue = item.quantityValue,
+            quantityUnit = item.quantityUnit,
+            category = item.iconKey,
+            locationKey = item.destinationKey,
+            expiryLabel = null,
+            expiryDateIso = null,
+            iconKey = item.iconKey,
+        )
+    }
+
+    LocalAppContentStore.savePantryFoods(pantryFoods)
     items.removeAll { it.checked }
     LocalAppContentStore.saveShoppingItems(items.map { it.toRecord() })
+}
+
+private fun normalizeIconKey(iconKey: String, category: String, name: String): String {
+    val candidates = listOf(iconKey, category, name.lowercase())
+    for (candidate in candidates) {
+        val key = when {
+            candidate == "fruits" -> "fruits"
+            candidate == "vegetables" -> "vegetables"
+            candidate == "meat" -> "meat"
+            candidate == "fish" -> "fish"
+            candidate == "seafood" -> "seafood"
+            candidate == "bread" -> "bread"
+            candidate == "milk" -> "milk"
+            candidate == "yogurts" -> "yogurts"
+            candidate == "cheese" -> "cheese"
+            candidate == "eggs" -> "eggs"
+            candidate == "grains" -> "grains"
+            candidate == "canned_food" -> "canned_food"
+            candidate == "frozen" -> "frozen"
+            candidate == "water" -> "water"
+            candidate == "soft_drinks" -> "soft_drinks"
+            candidate == "juice" -> "juice"
+            candidate == "wine" -> "wine"
+            candidate == "beer" -> "beer"
+            candidate == "coffee_tea" -> "coffee_tea"
+            candidate == "snacks" -> "snacks"
+            candidate == "sweets" -> "sweets"
+            candidate == "sauces" -> "sauces"
+            candidate == "oil_vinegar" -> "oil_vinegar"
+            candidate == "ready_meals" -> "ready_meals"
+            candidate == "cleaning" -> "cleaning"
+            candidate == "hygiene" -> "hygiene"
+            candidate == "pets" -> "pets"
+            candidate == "other" -> "other"
+            "tomate" in candidate || "verdura" in candidate || "fruta" in candidate -> "vegetables"
+            "leche" in candidate -> "milk"
+            "yogur" in candidate -> "yogurts"
+            "queso" in candidate -> "cheese"
+            "huevo" in candidate -> "eggs"
+            "arroz" in candidate || "pasta" in candidate -> "grains"
+            "pesc" in candidate -> "fish"
+            "pollo" in candidate || "carne" in candidate -> "meat"
+            "pan" in candidate -> "bread"
+            "caldo" in candidate || "sopa" in candidate -> "ready_meals"
+            else -> ""
+        }
+        if (key.isNotBlank()) return key
+    }
+    return "other"
 }
 
 private fun String.toCategoryIconResource(): DrawableResource {
