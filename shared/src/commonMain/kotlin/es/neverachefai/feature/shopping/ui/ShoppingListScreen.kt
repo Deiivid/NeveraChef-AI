@@ -15,10 +15,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -107,13 +107,12 @@ fun ShoppingListScreen(
     val addedCount = items.size
     val markedCount = items.count { it.checked }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(start = 4.dp, end = 4.dp, top = 26.dp, bottom = 8.dp),
-        ) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(start = 4.dp, end = 4.dp, top = 26.dp, bottom = 8.dp),
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
             ShoppingHeader(addedCount = addedCount)
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -132,10 +131,16 @@ fun ShoppingListScreen(
                     modifier = Modifier.weight(1f),
                 )
             }
+        }
 
-            Spacer(modifier = Modifier.height(10.dp))
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = 218.dp),
+        ) {
+            item { Spacer(modifier = Modifier.height(10.dp)) }
 
-            items.forEachIndexed { index, item ->
+            itemsIndexed(items) { index, item ->
                 ShoppingListRow(
                     item = item,
                     onCheckedChange = { checked ->
@@ -147,26 +152,28 @@ fun ShoppingListScreen(
             }
 
             if (items.any { it.checked }) {
-                Spacer(modifier = Modifier.height(6.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(18.dp))
-                        .background(Color(0xFFE9F7EF))
-                        .clickable { finalizeCheckedItems(items, shoppingRepository, pantryRepository) }
-                        .padding(vertical = 14.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = "Finalizar compra",
-                        color = Green,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                    )
+                item {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(Color(0xFFE9F7EF))
+                            .clickable { finalizeCheckedItems(items, shoppingRepository, pantryRepository) }
+                            .padding(vertical = 14.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "Finalizar compra",
+                            color = Green,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(120.dp))
+            item { Spacer(modifier = Modifier.height(120.dp)) }
         }
 
         Box(
@@ -397,45 +404,35 @@ private fun finalizeCheckedItems(
 private fun normalizeIconKey(iconKey: String, category: String, name: String): String {
     val candidates = listOf(iconKey, category, name.lowercase())
     for (candidate in candidates) {
-        val key = when {
-            candidate == "fruits" -> "fruits"
-            candidate == "vegetables" -> "vegetables"
-            candidate == "meat" -> "meat"
-            candidate == "fish" -> "fish"
-            candidate == "seafood" -> "seafood"
-            candidate == "bread" -> "bread"
-            candidate == "milk" -> "milk"
-            candidate == "yogurts" -> "yogurts"
-            candidate == "cheese" -> "cheese"
-            candidate == "eggs" -> "eggs"
-            candidate == "grains" -> "grains"
-            candidate == "canned_food" -> "canned_food"
-            candidate == "frozen" -> "frozen"
-            candidate == "water" -> "water"
-            candidate == "soft_drinks" -> "soft_drinks"
-            candidate == "juice" -> "juice"
-            candidate == "wine" -> "wine"
-            candidate == "beer" -> "beer"
-            candidate == "coffee_tea" -> "coffee_tea"
-            candidate == "snacks" -> "snacks"
-            candidate == "sweets" -> "sweets"
-            candidate == "sauces" -> "sauces"
-            candidate == "oil_vinegar" -> "oil_vinegar"
-            candidate == "ready_meals" -> "ready_meals"
-            candidate == "cleaning" -> "cleaning"
-            candidate == "hygiene" -> "hygiene"
-            candidate == "pets" -> "pets"
-            candidate == "other" -> "other"
-            "tomate" in candidate || "verdura" in candidate || "fruta" in candidate -> "vegetables"
-            "leche" in candidate -> "milk"
-            "yogur" in candidate -> "yogurts"
-            "queso" in candidate -> "cheese"
-            "huevo" in candidate -> "eggs"
-            "arroz" in candidate || "pasta" in candidate -> "grains"
-            "pesc" in candidate -> "fish"
-            "pollo" in candidate || "carne" in candidate -> "meat"
-            "pan" in candidate -> "bread"
-            "caldo" in candidate || "sopa" in candidate -> "ready_meals"
+        val key = when (candidate) {
+            "fruits" -> "fruits"
+            "vegetables" -> "vegetables"
+            "meat" -> "meat"
+            "fish" -> "fish"
+            "seafood" -> "seafood"
+            "bread" -> "bread"
+            "milk" -> "milk"
+            "yogurts" -> "yogurts"
+            "cheese" -> "cheese"
+            "eggs" -> "eggs"
+            "grains" -> "grains"
+            "canned_food" -> "canned_food"
+            "frozen" -> "frozen"
+            "water" -> "water"
+            "soft_drinks" -> "soft_drinks"
+            "juice" -> "juice"
+            "wine" -> "wine"
+            "beer" -> "beer"
+            "coffee_tea" -> "coffee_tea"
+            "snacks" -> "snacks"
+            "sweets" -> "sweets"
+            "sauces" -> "sauces"
+            "oil_vinegar" -> "oil_vinegar"
+            "ready_meals" -> "ready_meals"
+            "cleaning" -> "cleaning"
+            "hygiene" -> "hygiene"
+            "pets" -> "pets"
+            "other" -> "other"
             else -> ""
         }
         if (key.isNotBlank()) return key

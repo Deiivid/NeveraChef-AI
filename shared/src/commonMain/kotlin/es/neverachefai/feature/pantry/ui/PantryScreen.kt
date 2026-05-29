@@ -46,24 +46,43 @@ import androidx.compose.ui.unit.sp
 import es.neverachefai.core.designsystem.NeveraChefColors
 import es.neverachefai.core.persistence.PantryFoodRecord
 import neverachefai.shared.generated.resources.Res
+import neverachefai.shared.generated.resources.ic_cat_beer
+import neverachefai.shared.generated.resources.ic_cat_bread
+import neverachefai.shared.generated.resources.ic_cat_canned_food
+import neverachefai.shared.generated.resources.ic_cat_cheese
+import neverachefai.shared.generated.resources.ic_cat_cleaning
+import neverachefai.shared.generated.resources.ic_cat_coffee_tea
+import neverachefai.shared.generated.resources.ic_cat_eggs
+import neverachefai.shared.generated.resources.ic_cat_fish
+import neverachefai.shared.generated.resources.ic_cat_frozen
 import neverachefai.shared.generated.resources.ic_cat_fruits
+import neverachefai.shared.generated.resources.ic_cat_hygiene
+import neverachefai.shared.generated.resources.ic_cat_juice
 import neverachefai.shared.generated.resources.ic_cat_meat
 import neverachefai.shared.generated.resources.ic_cat_milk
+import neverachefai.shared.generated.resources.ic_cat_oil_vinegar
+import neverachefai.shared.generated.resources.ic_cat_other
+import neverachefai.shared.generated.resources.ic_cat_pasta_rice_legumes
+import neverachefai.shared.generated.resources.ic_cat_pets
+import neverachefai.shared.generated.resources.ic_cat_ready_meals
+import neverachefai.shared.generated.resources.ic_cat_sauces
+import neverachefai.shared.generated.resources.ic_cat_seafood
+import neverachefai.shared.generated.resources.ic_cat_snacks
+import neverachefai.shared.generated.resources.ic_cat_soft_drinks
+import neverachefai.shared.generated.resources.ic_cat_sweets
 import neverachefai.shared.generated.resources.ic_cat_vegetables
+import neverachefai.shared.generated.resources.ic_cat_water_bottle
+import neverachefai.shared.generated.resources.ic_cat_wine
+import neverachefai.shared.generated.resources.ic_cat_yogurts
 import neverachefai.shared.generated.resources.ic_nc_arrow_back
+import neverachefai.shared.generated.resources.ic_fab_add_food
 import neverachefai.shared.generated.resources.ic_nc_freezer
 import neverachefai.shared.generated.resources.ic_nc_fridge
 import neverachefai.shared.generated.resources.ic_nc_pantry
-import neverachefai.shared.generated.resources.ic_fab_add_food
 import neverachefai.shared.generated.resources.ic_nc_trash
 import neverachefai.shared.generated.resources.ref_icon_search
 import neverachefai.shared.generated.resources.ref_icon_sliders
 import neverachefai.shared.generated.resources.ref_inventory_hero
-import neverachefai.shared.generated.resources.ref_food_eggs
-import neverachefai.shared.generated.resources.ref_food_fish
-import neverachefai.shared.generated.resources.ref_food_lentils
-import neverachefai.shared.generated.resources.ref_food_rice
-import neverachefai.shared.generated.resources.ref_food_spinach
 import es.neverachefai.feature.pantry.ui.loadExpiryReminderDays
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
@@ -129,8 +148,23 @@ fun PantryScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
+        HeroHeader(
+            total = if (foods.size == 5) 6 else foods.size,
+            deleteMode = deleteMode,
+            onDeleteModeToggle = {
+                if (deleteMode) {
+                    deleteMode = false
+                    selectedFoodIds = emptySet()
+                } else {
+                    deleteMode = true
+                }
+            },
+        )
+
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = 126.dp),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(
                 start = 4.dp,
                 top = 0.dp,
@@ -139,20 +173,6 @@ fun PantryScreen(
             ),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            item {
-                HeroHeader(
-                    total = if (foods.size == 5) 6 else foods.size,
-                    deleteMode = deleteMode,
-                    onDeleteModeToggle = {
-                        if (deleteMode) {
-                            deleteMode = false
-                            selectedFoodIds = emptySet()
-                        } else {
-                            deleteMode = true
-                        }
-                    },
-                )
-            }
             item {
                 SearchBar(
                     value = searchQuery,
@@ -626,15 +646,43 @@ internal fun pantryFoodRecordToUi(record: PantryFoodRecord): PantryFoodUi {
 }
 
 internal fun pantryIconResource(iconKey: String): DrawableResource {
-    return when (iconKey) {
-        "egg", "eggs" -> Res.drawable.ref_food_eggs
-        "fish" -> Res.drawable.ref_food_fish
+    val normalizedKey = when (iconKey.trim().lowercase()) {
+        "egg", "eggs", "huevo", "huevos" -> "eggs"
+        "spinach", "verdura", "verduras", "vegetable" -> "vegetables"
+        "fruit", "fruta", "frutas" -> "fruits"
+        "proteina", "proteína", "protein", "carne" -> "meat"
+        "rice", "lentils", "grain", "cereal", "grano", "granos" -> "grains"
+        else -> iconKey.trim().lowercase()
+    }
+    return when (normalizedKey) {
         "fruits" -> Res.drawable.ic_cat_fruits
+        "vegetables" -> Res.drawable.ic_cat_vegetables
         "meat" -> Res.drawable.ic_cat_meat
+        "fish" -> Res.drawable.ic_cat_fish
+        "seafood" -> Res.drawable.ic_cat_seafood
+        "bread" -> Res.drawable.ic_cat_bread
         "milk" -> Res.drawable.ic_cat_milk
-        "lentils" -> Res.drawable.ref_food_lentils
-        "rice" -> Res.drawable.ref_food_rice
-        "spinach", "vegetables" -> Res.drawable.ref_food_spinach
-        else -> Res.drawable.ic_cat_vegetables
+        "yogurts" -> Res.drawable.ic_cat_yogurts
+        "cheese" -> Res.drawable.ic_cat_cheese
+        "eggs" -> Res.drawable.ic_cat_eggs
+        "grains" -> Res.drawable.ic_cat_pasta_rice_legumes
+        "canned_food" -> Res.drawable.ic_cat_canned_food
+        "frozen" -> Res.drawable.ic_cat_frozen
+        "water" -> Res.drawable.ic_cat_water_bottle
+        "soft_drinks" -> Res.drawable.ic_cat_soft_drinks
+        "juice" -> Res.drawable.ic_cat_juice
+        "wine" -> Res.drawable.ic_cat_wine
+        "beer" -> Res.drawable.ic_cat_beer
+        "coffee_tea" -> Res.drawable.ic_cat_coffee_tea
+        "snacks" -> Res.drawable.ic_cat_snacks
+        "sweets" -> Res.drawable.ic_cat_sweets
+        "sauces" -> Res.drawable.ic_cat_sauces
+        "oil_vinegar" -> Res.drawable.ic_cat_oil_vinegar
+        "ready_meals" -> Res.drawable.ic_cat_ready_meals
+        "cleaning" -> Res.drawable.ic_cat_cleaning
+        "hygiene" -> Res.drawable.ic_cat_hygiene
+        "pets" -> Res.drawable.ic_cat_pets
+        "other" -> Res.drawable.ic_cat_other
+        else -> Res.drawable.ic_cat_other
     }
 }

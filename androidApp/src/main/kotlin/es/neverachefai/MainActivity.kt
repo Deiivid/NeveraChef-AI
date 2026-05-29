@@ -1,8 +1,11 @@
 package es.neverachefai
 
 import android.Manifest
+import android.app.Activity
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.speech.RecognizerIntent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -16,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
 import es.neverachefai.core.preferences.initializeAppPreferences
+import java.util.Locale
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -37,6 +41,19 @@ class MainActivity : ComponentActivity() {
             ) { granted ->
                 microphoneGranted = granted
             }
+            var onSpeechResult by remember { mutableStateOf<((String) -> Unit)?>(null) }
+            val speechLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.StartActivityForResult(),
+            ) { result ->
+                if (result.resultCode == Activity.RESULT_OK) {
+                    val spokenText = result.data
+                        ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+                        ?.firstOrNull()
+                        .orEmpty()
+                    onSpeechResult?.invoke(spokenText)
+                }
+                onSpeechResult = null
+            }
 
             App(
                 cameraPermissionGranted = cameraGranted,
@@ -46,6 +63,17 @@ class MainActivity : ComponentActivity() {
                 },
                 onRequestMicrophonePermission = {
                     microphonePermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                },
+                onRequestSpeechToText = { onResult ->
+                    onSpeechResult = onResult
+                    val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                        putExtra(
+                            RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                            RecognizerIntent.LANGUAGE_MODEL_FREE_FORM,
+                        )
+                        putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+                    }
+                    speechLauncher.launch(intent)
                 },
             )
         }
