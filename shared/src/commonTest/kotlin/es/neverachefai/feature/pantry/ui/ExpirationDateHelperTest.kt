@@ -45,4 +45,21 @@ class ExpirationDateHelperTest {
     fun `returns null for invalid date`() {
         assertNull(getExpirationText("2026-13-99", todayIso = "2026-05-21"))
     }
+
+    @Test
+    fun `returns days until expiry`() {
+        assertEquals(2, daysUntilExpiry("2026-05-23", todayIso = "2026-05-21"))
+    }
+
+    @Test
+    fun `uses warning days threshold for priority`() {
+        assertEquals(
+            ExpirationPriority.SOON,
+            expirationPriority("2026-05-26", todayIso = "2026-05-21", warningDays = 5),
+        )
+        assertEquals(
+            ExpirationPriority.NORMAL,
+            expirationPriority("2026-05-26", todayIso = "2026-05-21", warningDays = 3),
+        )
+    }
 }

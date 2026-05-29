@@ -9,7 +9,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -27,8 +29,8 @@ import androidx.compose.ui.unit.dp
 import es.neverachefai.core.designsystem.NeveraChefColors
 import es.neverachefai.feature.navigation.MainTab
 import neverachefai.shared.generated.resources.Res
-import neverachefai.shared.generated.resources.ic_nc_fridge
 import neverachefai.shared.generated.resources.ic_nc_chef_hat
+import neverachefai.shared.generated.resources.ic_nc_fridge
 import neverachefai.shared.generated.resources.ic_nc_settings
 import neverachefai.shared.generated.resources.ic_nc_shopping_basket
 import org.jetbrains.compose.resources.DrawableResource
@@ -58,7 +60,9 @@ fun NeveraBottomNavigation(
     onTabSelected: (MainTab) -> Unit,
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding(),
         color = Color.White,
     ) {
         Row(
@@ -96,7 +100,7 @@ private fun BottomTab(
             .fillMaxWidth()
             .height(54.dp),
         shape = RoundedCornerShape(26.dp),
-        color = if (selected) NeveraChefColors.Blue else Color.White,
+        color = if (selected) Color(0xFFE7F3E8) else Color.White,
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -105,11 +109,12 @@ private fun BottomTab(
             Icon(
                 painter = painterResource(tab.iconRes()),
                 contentDescription = tab.label,
-                tint = if (selected) Color.White else NeveraChefColors.Muted,
+                tint = if (selected) Color(0xFF007A53) else NeveraChefColors.Muted,
+                modifier = Modifier.size(24.dp),
             )
             Text(
                 text = tab.label,
-                color = if (selected) Color.White else NeveraChefColors.Muted,
+                color = if (selected) Color(0xFF007A53) else NeveraChefColors.Muted,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.SemiBold,
             )

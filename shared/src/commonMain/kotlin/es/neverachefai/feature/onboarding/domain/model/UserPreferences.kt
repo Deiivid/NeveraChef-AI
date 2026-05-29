@@ -1,4 +1,4 @@
-package es.neverachefai.domain.model
+package es.neverachefai.feature.onboarding.domain.model
 
 data class UserPreferences(
     val peopleCount: Int = 2,

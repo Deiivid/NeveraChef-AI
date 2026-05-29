@@ -1,4 +1,4 @@
-package es.neverachefai.domain.model
+package es.neverachefai.feature.pantry.domain.model
 
 data class Ingredient(
     val name: String,
