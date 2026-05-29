@@ -102,6 +102,7 @@ private data class EditableProductUiState(
 )
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 fun FoodDetailScreen(
     food: PantryFoodUi?,
     onBack: () -> Unit,

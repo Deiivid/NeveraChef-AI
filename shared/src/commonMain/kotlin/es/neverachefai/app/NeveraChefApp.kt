@@ -5,6 +5,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import es.neverachefai.core.persistence.LocalAppContentStore
+import es.neverachefai.core.persistence.ShoppingItemRecord
 import es.neverachefai.core.preferences.AppPreferences
 import es.neverachefai.core.ui.components.NeveraMainScaffold
 import es.neverachefai.feature.navigation.MainTab
@@ -13,18 +15,16 @@ import es.neverachefai.feature.navigation.RecipesFlow
 import es.neverachefai.feature.navigation.RootFlow
 import es.neverachefai.feature.onboarding.ui.InitialPreferencesScreen
 import es.neverachefai.feature.onboarding.ui.OnboardingScreen
-import es.neverachefai.feature.pantry.data.PantryRepositoryImpl
-import es.neverachefai.feature.pantry.domain.model.PantryFood
 import es.neverachefai.feature.pantry.ui.AddIngredientsScreen
 import es.neverachefai.feature.pantry.ui.FoodDetailScreen
 import es.neverachefai.feature.pantry.ui.IngredientReviewScreen
 import es.neverachefai.feature.pantry.ui.PantryFoodUi
 import es.neverachefai.feature.pantry.ui.PantryScreen
+import es.neverachefai.feature.pantry.ui.pantryFoodRecordToUi
 import es.neverachefai.feature.recipes.ui.RecipeDetailScreen
 import es.neverachefai.feature.recipes.ui.RecipeGenerationScreen
 import es.neverachefai.feature.recipes.ui.RecipeResultsScreen
 import es.neverachefai.feature.settings.ui.SettingsScreen
-import es.neverachefai.feature.shopping.data.ShoppingRepositoryImpl
 import es.neverachefai.feature.shopping.ui.AddShoppingProductScreen
 import es.neverachefai.feature.shopping.ui.AddShoppingProductUiState
 import es.neverachefai.feature.shopping.ui.ShoppingListScreen
@@ -36,13 +36,12 @@ fun NeveraChefApp(
     onRequestCameraPermission: () -> Unit = {},
     onRequestMicrophonePermission: () -> Unit = {},
 ) {
-    val pantryRepository = remember { PantryRepositoryImpl() }
-    val shoppingRepository = remember { ShoppingRepositoryImpl() }
     val onboardingSeen = remember { AppPreferences.isOnboardingSeen() }
     var rootFlow by remember { mutableStateOf(if (onboardingSeen) RootFlow.MAIN else RootFlow.ONBOARDING) }
     var currentTab by remember { mutableStateOf(MainTab.PANTRY) }
     var pantryFlow by remember { mutableStateOf(PantryFlow.LIST) }
     var selectedFood by remember { mutableStateOf<PantryFoodUi?>(null) }
+    var pantryFoods by remember { mutableStateOf(LocalAppContentStore.loadPantryFoods().map(::pantryFoodRecordToUi)) }
     var recipesFlow by remember { mutableStateOf(RecipesFlow.GENERATE) }
     var showAddShoppingProduct by remember { mutableStateOf(false) }
     var addShoppingState by remember { mutableStateOf(AddShoppingProductUiState()) }
@@ -59,6 +58,7 @@ fun NeveraChefApp(
         currentTab = MainTab.PANTRY
         pantryFlow = PantryFlow.LIST
         selectedFood = null
+        pantryFoods = LocalAppContentStore.loadPantryFoods().map(::pantryFoodRecordToUi)
         recipesFlow = RecipesFlow.GENERATE
         showAddShoppingProduct = false
         addShoppingState = AddShoppingProductUiState()
@@ -75,11 +75,23 @@ fun NeveraChefApp(
                 when (currentTab) {
                     MainTab.PANTRY -> when (pantryFlow) {
                         PantryFlow.LIST -> PantryScreen(
+                            foods = pantryFoods,
                             onAdd = { pantryFlow = PantryFlow.ADD },
                             onReview = { pantryFlow = PantryFlow.REVIEW },
                             onFoodClick = {
                                 selectedFood = it
                                 pantryFlow = PantryFlow.DETAIL
+                            },
+                            onDeleteFoods = { ids ->
+                                if (ids.isNotEmpty()) {
+                                    LocalAppContentStore.deletePantryFoods(ids)
+                                    val current = LocalAppContentStore.loadPantryFoods().toMutableList()
+                                    pantryFoods = current.map(::pantryFoodRecordToUi)
+                                    if (selectedFood?.id in ids) {
+                                        selectedFood = null
+                                        pantryFlow = PantryFlow.LIST
+                                    }
+                                }
                             },
                         )
 
@@ -90,10 +102,11 @@ fun NeveraChefApp(
                             onBack = { pantryFlow = PantryFlow.LIST },
                             onSaveEditedFood = { updated ->
                                 selectedFood = updated
-                                val current = pantryRepository.loadFoods().toMutableList()
+                                val current = LocalAppContentStore.loadPantryFoods().toMutableList()
                                 val index = current.indexOfFirst { it.id == updated.id }
                                 if (index >= 0) {
-                                    current[index] = current[index].copy(
+                                    val existing = current[index]
+                                    current[index] = existing.copy(
                                         name = updated.name,
                                         quantity = updated.quantity,
                                         category = updated.category,
@@ -104,7 +117,8 @@ fun NeveraChefApp(
                                         },
                                         expiryDateIso = updated.expiryDateIso,
                                     )
-                                    pantryRepository.saveFoods(current)
+                                    LocalAppContentStore.savePantryFoods(current)
+                                    pantryFoods = current.map(::pantryFoodRecordToUi)
                                 }
                             },
                             onGenerateRecipe = {
@@ -143,8 +157,8 @@ fun NeveraChefApp(
                                     val iconKey = addShoppingState.destination.toCategoryIconKey()
                                     val destinationKey = iconKey.toDestinationKey()
                                     val parsedQuantity = parseQuantityInput(addShoppingState.quantity)
-                                    val currentItems = shoppingRepository.loadItems().toMutableList()
-                                    currentItems += es.neverachefai.feature.shopping.domain.model.ShoppingListItem(
+                                    val currentItems = LocalAppContentStore.loadShoppingItems().toMutableList()
+                                    currentItems += ShoppingItemRecord(
                                         id = "shopping_${currentItems.size + 1}_${itemName.lowercase().replace(" ", "_")}",
                                         name = itemName,
                                         quantity = parsedQuantity.displayLabel,
@@ -155,7 +169,7 @@ fun NeveraChefApp(
                                         destinationKey = destinationKey,
                                         iconKey = iconKey,
                                     )
-                                    shoppingRepository.saveItems(currentItems)
+                                    LocalAppContentStore.saveShoppingItems(currentItems)
                                 }
                                 addShoppingState = AddShoppingProductUiState()
                                 showAddShoppingProduct = false
