@@ -559,16 +559,23 @@ private fun HeaderSection(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                Icon(
-                    painter = painterResource(Res.drawable.ic_nc_arrow_back),
-                    contentDescription = null,
-                    tint = NcGreen,
+                Box(
                     modifier = Modifier
-                        .size(24.dp)
+                        .size(28.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Color(0xFFEAF3ED))
                         .clickable(onClick = onBackClick),
-                )
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_nc_arrow_back),
+                        contentDescription = null,
+                        tint = NcGreen,
+                        modifier = Modifier.size(17.dp),
+                    )
+                }
                 Text(
                     text = "Añadir producto",
                     color = NcGreen,
@@ -586,7 +593,7 @@ private fun HeaderSection(
             )
         }
         Box(
-            modifier = Modifier.size(146.dp, 108.dp),
+            modifier = Modifier.size(150.dp, 112.dp),
             contentAlignment = Alignment.Center,
         ) {
             Icon(

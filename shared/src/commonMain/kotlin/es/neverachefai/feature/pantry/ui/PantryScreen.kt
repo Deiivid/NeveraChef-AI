@@ -148,23 +148,35 @@ fun PantryScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        HeroHeader(
-            total = if (foods.size == 5) 6 else foods.size,
-            deleteMode = deleteMode,
-            onDeleteModeToggle = {
-                if (deleteMode) {
-                    deleteMode = false
-                    selectedFoodIds = emptySet()
-                } else {
-                    deleteMode = true
-                }
-            },
-        )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            HeroHeader(
+                total = if (foods.size == 5) 6 else foods.size,
+                deleteMode = deleteMode,
+                onDeleteModeToggle = {
+                    if (deleteMode) {
+                        deleteMode = false
+                        selectedFoodIds = emptySet()
+                    } else {
+                        deleteMode = true
+                    }
+                },
+            )
+            SearchBar(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                onReview = onReview,
+            )
+        }
 
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = 126.dp),
+                .padding(top = 192.dp),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(
                 start = 4.dp,
                 top = 0.dp,
@@ -173,13 +185,6 @@ fun PantryScreen(
             ),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            item {
-                SearchBar(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    onReview = onReview,
-                )
-            }
             if (selectionMode) {
                 item {
                     SelectionBar(

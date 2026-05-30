@@ -4,6 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,11 +20,18 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -68,7 +76,8 @@ import neverachefai.shared.generated.resources.ic_cat_yogurts
 import neverachefai.shared.generated.resources.ic_nc_check_square
 import neverachefai.shared.generated.resources.ic_nc_plus
 import neverachefai.shared.generated.resources.ic_nc_shopping_basket
-import neverachefai.shared.generated.resources.ref_shopping_hero_basket
+import neverachefai.shared.generated.resources.ic_nc_trash
+import neverachefai.shared.generated.resources.ref_shopping_hero_list
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
@@ -103,6 +112,9 @@ fun ShoppingListScreen(
             addAll(shoppingRepository.loadItems().map { it.toUi() })
         }
     }
+    var deleteMode by remember { mutableStateOf(false) }
+    var selectedItemIds by remember { mutableStateOf(setOf<String>()) }
+    val selectionMode = deleteMode || selectedItemIds.isNotEmpty()
 
     val addedCount = items.size
     val markedCount = items.count { it.checked }
@@ -110,10 +122,21 @@ fun ShoppingListScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(start = 4.dp, end = 4.dp, top = 26.dp, bottom = 8.dp),
+            .padding(start = 4.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            ShoppingHeader(addedCount = addedCount)
+            ShoppingHeader(
+                addedCount = addedCount,
+                deleteMode = deleteMode,
+                onDeleteClick = {
+                    if (deleteMode) {
+                        deleteMode = false
+                        selectedItemIds = emptySet()
+                    } else {
+                        deleteMode = true
+                    }
+                },
+            )
             Spacer(modifier = Modifier.height(12.dp))
 
             Row(
@@ -136,22 +159,58 @@ fun ShoppingListScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = 218.dp),
+                .padding(top = 192.dp),
         ) {
             item { Spacer(modifier = Modifier.height(10.dp)) }
+
+            if (selectionMode) {
+                item {
+                    SelectionBar(
+                        count = selectedItemIds.size,
+                        onDelete = {
+                            if (selectedItemIds.isNotEmpty()) {
+                                val kept = items.filterNot { it.id in selectedItemIds }
+                                items.clear()
+                                items.addAll(kept)
+                                shoppingRepository.saveItems(items.map { it.toDomain() })
+                            }
+                            selectedItemIds = emptySet()
+                            deleteMode = false
+                        },
+                        onCancel = {
+                            selectedItemIds = emptySet()
+                            deleteMode = false
+                        },
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
 
             itemsIndexed(items) { index, item ->
                 ShoppingListRow(
                     item = item,
+                    selectionMode = selectionMode,
+                    deleteSelected = item.id in selectedItemIds,
+                    onDeleteSelectedChange = { checked ->
+                        selectedItemIds = if (checked) selectedItemIds + item.id else selectedItemIds - item.id
+                    },
+                    onLongSelect = {
+                        if (!selectionMode) {
+                            deleteMode = true
+                            selectedItemIds = setOf(item.id)
+                        }
+                    },
                     onCheckedChange = { checked ->
-                        items[index] = item.copy(checked = checked)
-                        shoppingRepository.saveItems(items.map { it.toDomain() })
+                        if (!selectionMode) {
+                            items[index] = item.copy(checked = checked)
+                            shoppingRepository.saveItems(items.map { it.toDomain() })
+                        }
                     },
                 )
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
-            if (items.any { it.checked }) {
+            if (!selectionMode && items.any { it.checked }) {
                 item {
                     Spacer(modifier = Modifier.height(6.dp))
                     Box(
@@ -197,7 +256,11 @@ fun ShoppingListScreen(
 }
 
 @Composable
-private fun ShoppingHeader(addedCount: Int) {
+private fun ShoppingHeader(
+    addedCount: Int,
+    deleteMode: Boolean,
+    onDeleteClick: () -> Unit,
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -207,7 +270,7 @@ private fun ShoppingHeader(addedCount: Int) {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 10.dp)
-                .height(148.dp),
+                .height(128.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -222,23 +285,37 @@ private fun ShoppingHeader(addedCount: Int) {
                     fontWeight = FontWeight.Bold,
                 )
                 Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = "$addedCount añadidos",
-                    color = Ink,
-                    fontSize = 17.sp,
-                    lineHeight = 20.sp,
-                    fontWeight = FontWeight.Medium,
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(
+                        text = "$addedCount añadidos",
+                        color = Ink,
+                        fontSize = 17.sp,
+                        lineHeight = 20.sp,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_nc_trash),
+                        contentDescription = if (deleteMode) "Cancelar borrado" else "Seleccionar para borrar",
+                        tint = if (deleteMode) Color(0xFFE03131) else Color(0xFF042D1F),
+                        modifier = Modifier
+                            .size(16.dp)
+                            .clickable(onClick = onDeleteClick),
+                    )
+                }
             }
 
             Image(
-                painter = painterResource(Res.drawable.ref_shopping_hero_basket),
+                painter = painterResource(Res.drawable.ref_shopping_hero_list),
                 contentDescription = null,
                 modifier = Modifier
                     .padding(start = 8.dp)
-                    .size(width = 150.dp, height = 174.dp),
+                    .size(width = 140.dp, height = 154.dp),
             )
         }
+
     }
 }
 
@@ -278,14 +355,28 @@ private fun MetricChip(
 @Composable
 private fun ShoppingListRow(
     item: ShoppingListItemUi,
+    selectionMode: Boolean,
+    deleteSelected: Boolean,
+    onDeleteSelectedChange: (Boolean) -> Unit,
+    onLongSelect: () -> Unit,
     onCheckedChange: (Boolean) -> Unit,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
-            .background(if (item.checked) Color(0xFFF5FAF5) else Color.White)
+            .background(if (selectionMode && deleteSelected) Color(0xFFF5FAF5) else if (item.checked) Color(0xFFF5FAF5) else Color.White)
             .border(1.dp, CardLine, RoundedCornerShape(18.dp))
+            .combinedClickable(
+                onClick = {
+                    if (selectionMode) {
+                        onDeleteSelectedChange(!deleteSelected)
+                    } else {
+                        onCheckedChange(!item.checked)
+                    }
+                },
+                onLongClick = onLongSelect,
+            )
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -293,23 +384,35 @@ private fun ShoppingListRow(
             modifier = Modifier.size(32.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(28.dp)
-                    .clip(CircleShape)
-                    .background(if (item.checked) Green else Color.White)
-                    .border(1.dp, if (item.checked) Green else Color(0xFF5A616D), CircleShape)
-                    .clickable { onCheckedChange(!item.checked) },
-                contentAlignment = Alignment.Center,
-            ) {
-                if (item.checked) {
-                    Text(
-                        text = "✓",
-                        color = Color.White,
-                        fontSize = 18.sp,
-                        lineHeight = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
+            if (selectionMode) {
+                Checkbox(
+                    checked = deleteSelected,
+                    onCheckedChange = { onDeleteSelectedChange(it) },
+                    colors = CheckboxDefaults.colors(
+                        checkedColor = Color(0xFF0B8E5F),
+                        checkmarkColor = Color.White,
+                        uncheckedColor = Color(0xFF9AA0AE),
+                    ),
+                    modifier = Modifier.size(24.dp),
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .background(if (item.checked) Green else Color.White)
+                        .border(1.dp, if (item.checked) Green else Color(0xFF5A616D), CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (item.checked) {
+                        Text(
+                            text = "✓",
+                            color = Color.White,
+                            fontSize = 18.sp,
+                            lineHeight = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
                 }
             }
         }
@@ -339,6 +442,56 @@ private fun ShoppingListRow(
             contentDescription = item.name,
             modifier = Modifier.size(52.dp),
         )
+    }
+}
+
+@Composable
+private fun SelectionBar(
+    count: Int,
+    onDelete: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        color = Color.White,
+        shadowElevation = 8.dp,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                painter = painterResource(Res.drawable.ic_nc_trash),
+                contentDescription = null,
+                tint = Color(0xFFE03131),
+                modifier = Modifier.size(22.dp),
+            )
+            Text(
+                text = "$count seleccionados",
+                color = Color(0xFF1D1B20),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(onClick = onCancel) {
+                Text("Cancelar")
+            }
+            Surface(
+                onClick = onDelete,
+                shape = RoundedCornerShape(16.dp),
+                color = Color(0xFFFCE6E6),
+            ) {
+                Text(
+                    text = "Eliminar",
+                    color = Color(0xFFE03131),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                )
+            }
+        }
     }
 }
 
