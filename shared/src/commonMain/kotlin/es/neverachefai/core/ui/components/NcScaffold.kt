@@ -135,22 +135,29 @@ private fun MainTab.iconRes(): DrawableResource {
 fun NeveraMainScaffold(
     selectedTab: MainTab,
     onTabSelected: (MainTab) -> Unit,
+    showBottomBar: Boolean = true,
+    contentHorizontalPadding: androidx.compose.ui.unit.Dp = 12.dp,
+    contentVerticalPadding: androidx.compose.ui.unit.Dp = 8.dp,
     content: @Composable () -> Unit,
 ) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        bottomBar = {
-            NeveraBottomNavigation(
-                selectedTab = selectedTab,
-                onTabSelected = onTabSelected
-            )
+        bottomBar = if (showBottomBar) {
+            {
+                NeveraBottomNavigation(
+                    selectedTab = selectedTab,
+                    onTabSelected = onTabSelected
+                )
+            }
+        } else {
+            {}
         },
     ) { padding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .padding(horizontal = contentHorizontalPadding, vertical = contentVerticalPadding),
             contentAlignment = Alignment.TopCenter,
         ) {
             Column(

@@ -5,6 +5,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.dp
 import es.neverachefai.core.persistence.LocalAppContentStore
 import es.neverachefai.core.persistence.ShoppingItemRecord
 import es.neverachefai.core.preferences.AppPreferences
@@ -35,6 +37,7 @@ fun NeveraChefApp(
     microphonePermissionGranted: Boolean = false,
     onRequestCameraPermission: () -> Unit = {},
     onRequestMicrophonePermission: () -> Unit = {},
+    onRequestSpeechToText: ((String) -> Unit) -> Unit = {},
 ) {
     val onboardingSeen = remember { AppPreferences.isOnboardingSeen() }
     var rootFlow by remember { mutableStateOf(if (onboardingSeen) RootFlow.MAIN else RootFlow.ONBOARDING) }
@@ -71,6 +74,9 @@ fun NeveraChefApp(
         RootFlow.MAIN -> NeveraMainScaffold(
             selectedTab = currentTab,
             onTabSelected = { currentTab = it },
+            showBottomBar = !(currentTab == MainTab.SHOPPING && showAddShoppingProduct),
+            contentHorizontalPadding = if (currentTab == MainTab.SHOPPING && showAddShoppingProduct) 0.dp else 12.dp,
+            contentVerticalPadding = if (currentTab == MainTab.SHOPPING && showAddShoppingProduct) 0.dp else 8.dp,
             content = {
                 when (currentTab) {
                     MainTab.PANTRY -> when (pantryFlow) {
@@ -149,8 +155,20 @@ fun NeveraChefApp(
                             onProductNameChange = { addShoppingState = addShoppingState.copy(productName = it) },
                             onQuantityChange = { addShoppingState = addShoppingState.copy(quantity = it) },
                             onDestinationChange = { addShoppingState = addShoppingState.copy(destination = it) },
-                            onVoiceClick = {},
+                            onVoiceClick = {
+                                if (!microphonePermissionGranted) {
+                                    onRequestMicrophonePermission()
+                                } else {
+                                    onRequestSpeechToText { spokenText ->
+                                        val normalized = spokenText.trim()
+                                        if (normalized.isNotEmpty()) {
+                                            addShoppingState = addShoppingState.copy(productName = normalized)
+                                        }
+                                    }
+                                }
+                            },
                             onCameraClick = {},
+                            onBackClick = { showAddShoppingProduct = false },
                             onAddToShoppingListClick = {
                                 val itemName = addShoppingState.productName.trim()
                                 if (itemName.isNotEmpty()) {

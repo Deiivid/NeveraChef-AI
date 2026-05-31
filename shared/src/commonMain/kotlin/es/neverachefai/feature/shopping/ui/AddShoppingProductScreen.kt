@@ -2,10 +2,11 @@ package es.neverachefai.feature.shopping.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,13 +15,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
@@ -35,12 +35,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.text.KeyboardOptions
 import neverachefai.shared.generated.resources.Res
 import neverachefai.shared.generated.resources.ic_cat_beer
 import neverachefai.shared.generated.resources.ic_cat_bread
@@ -52,13 +52,13 @@ import neverachefai.shared.generated.resources.ic_cat_eggs
 import neverachefai.shared.generated.resources.ic_cat_fish
 import neverachefai.shared.generated.resources.ic_cat_frozen
 import neverachefai.shared.generated.resources.ic_cat_fruits
-import neverachefai.shared.generated.resources.ic_cat_pasta_rice_legumes
 import neverachefai.shared.generated.resources.ic_cat_hygiene
 import neverachefai.shared.generated.resources.ic_cat_juice
 import neverachefai.shared.generated.resources.ic_cat_meat
 import neverachefai.shared.generated.resources.ic_cat_milk
 import neverachefai.shared.generated.resources.ic_cat_oil_vinegar
 import neverachefai.shared.generated.resources.ic_cat_other
+import neverachefai.shared.generated.resources.ic_cat_pasta_rice_legumes
 import neverachefai.shared.generated.resources.ic_cat_pets
 import neverachefai.shared.generated.resources.ic_cat_ready_meals
 import neverachefai.shared.generated.resources.ic_cat_sauces
@@ -70,37 +70,42 @@ import neverachefai.shared.generated.resources.ic_cat_vegetables
 import neverachefai.shared.generated.resources.ic_cat_water_bottle
 import neverachefai.shared.generated.resources.ic_cat_wine
 import neverachefai.shared.generated.resources.ic_cat_yogurts
+import neverachefai.shared.generated.resources.ic_nc_arrow_back
+import neverachefai.shared.generated.resources.ic_nc_freezer
+import neverachefai.shared.generated.resources.ic_nc_fridge
+import neverachefai.shared.generated.resources.ic_nc_microphone
+import neverachefai.shared.generated.resources.ic_nc_pantry
 import neverachefai.shared.generated.resources.ic_nc_plus
-import neverachefai.shared.generated.resources.ic_nc_square
+import neverachefai.shared.generated.resources.ic_nc_settings
+import neverachefai.shared.generated.resources.ic_nc_shopping_basket
+import neverachefai.shared.generated.resources.ref_shopping_hero_basket
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
-
-private val Ink = Color(0xFF1D1B20)
-private val Muted = Color(0xFF424656)
-private val Primary = Color(0xFF004BCA)
-private val PrimaryContainer = Color(0xFF0061FF)
-private val Surface = Color(0xFFFEF7FF)
-private val SurfaceContainer = Color(0xFFF2ECF3)
-private val SurfaceLow = Color(0xFFF8F2F9)
-private val SurfaceVariant = Color(0xFFE6E1E8)
-private val OutlineVariant = Color(0xFFC2C6D9)
 
 enum class AddShoppingMode(
     val label: String,
     val iconRes: DrawableResource,
 ) {
-    Manual("Manual", Res.drawable.ic_nc_square),
-    Voice("Voz", Res.drawable.ic_nc_square),
-    Camera("Camara", Res.drawable.ic_nc_square),
+    Manual("Manual", Res.drawable.ic_nc_shopping_basket),
+    Voice("Voz", Res.drawable.ic_nc_microphone),
 }
 
 data class AddShoppingProductUiState(
     val selectedMode: AddShoppingMode = AddShoppingMode.Manual,
     val productName: String = "",
     val quantity: String = "1",
-    val destination: String = "",
+    val destination: String = "Frutas",
     val previewProducts: List<String> = emptyList(),
 )
+
+private val NcGreen = Color(0xFF00563C)
+private val NcGreenStrong = Color(0xFF006C4D)
+private val NcSurface = Color(0xFFFFFFFF)
+private val NcCard = Color(0xFFFFFFFF)
+private val NcText = Color(0xFF424A5B)
+private val NcSubtitle = Color(0xFF4D5565)
+private val NcBorder = Color(0xFFE2E5E8)
+private val NcMutedBg = Color(0xFFF1F4F2)
 
 @Composable
 fun AddShoppingProductScreen(
@@ -111,508 +116,681 @@ fun AddShoppingProductScreen(
     onDestinationChange: (String) -> Unit,
     onVoiceClick: () -> Unit,
     onCameraClick: () -> Unit,
+    onBackClick: () -> Unit,
     onAddToShoppingListClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var quantityMode by remember { mutableStateOf("Unidades") }
+    var location by remember { mutableStateOf("nevera") }
     val quantity = state.quantity.toIntOrNull()?.coerceAtLeast(1) ?: 1
-    var showNewProductModal by remember { mutableStateOf(false) }
-    val selectedCategory = state.destination
-    val isWeightCategory = isWeightCategory(selectedCategory)
 
     Scaffold(
-        modifier = modifier.background(Surface),
-        containerColor = Surface,
+        modifier = modifier,
+        containerColor = NcSurface,
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .background(SurfaceLow),
+                .background(NcSurface)
+                .padding(innerPadding),
         ) {
-            TopBar()
-            Column(
+            HeaderSection(
+                onBackClick = onBackClick,
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalArrangement = Arrangement.spacedBy(18.dp),
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 10.dp),
+            )
+
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = 0.dp,
+                    bottom = 8.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                SearchInput(state.productName, onProductNameChange)
-                AddNewProductButton { showNewProductModal = true }
-                CategoryStrip(
-                    selectedCategory = selectedCategory,
-                    onCategorySelected = onDestinationChange,
-                )
-                if (isWeightCategory) {
-                    WeightInputSection(
-                        productName = state.productName,
-                        quantityText = state.quantity,
-                        onProductNameChange = onProductNameChange,
-                        onQuantityChange = onQuantityChange,
-                    )
-                } else {
-                    QuantitySelector(
-                        quantity = quantity,
-                        onDecrease = { onQuantityChange((quantity - 1).coerceAtLeast(1).toString()) },
-                        onIncrease = { onQuantityChange((quantity + 1).toString()) },
+                item {
+                    OutlinedTextField(
+                        value = state.productName,
+                        onValueChange = onProductNameChange,
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        label = {
+                            Text(
+                                "Introduce el nombre del producto",
+                                color = Color.Black,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        },
+                        trailingIcon = {
+                            Icon(
+                                painter = painterResource(Res.drawable.ic_nc_microphone),
+                                contentDescription = null,
+                                tint = NcGreen,
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .clickable(onClick = onVoiceClick),
+                            )
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White,
+                            focusedBorderColor = Color.Black,
+                            unfocusedBorderColor = Color.Black,
+                            focusedTextColor = Color.Black,
+                            unfocusedTextColor = Color.Black,
+                        ),
                     )
                 }
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(
-                    onClick = onAddToShoppingListClick,
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    shape = RoundedCornerShape(28.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Primary),
+                item {
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
+
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        LazyRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            val categories = listOf(
+                                CategoryUi(
+                                    "Frutas",
+                                    Res.drawable.ic_cat_fruits,
+                                    Color(0xFFE9F3ED),
+                                    NcGreen
+                                ),
+                                CategoryUi(
+                                    "Carne",
+                                    Res.drawable.ic_cat_meat,
+                                    Color(0xFFFBF8F1),
+                                    Color(0xFFBF6A00)
+                                ),
+                                CategoryUi(
+                                    "Verduras",
+                                    Res.drawable.ic_cat_vegetables,
+                                    Color(0xFFEFF5EC),
+                                    Color(0xFF4A8D35)
+                                ),
+                                CategoryUi(
+                                    "Pescado",
+                                    Res.drawable.ic_cat_fish,
+                                    Color(0xFFF1F5FB),
+                                    Color(0xFF1D53D8)
+                                ),
+                                CategoryUi(
+                                    "Marisco",
+                                    Res.drawable.ic_cat_seafood,
+                                    Color(0xFFEFF7FA),
+                                    Color(0xFF207C8F)
+                                ),
+                                CategoryUi(
+                                    "Pan",
+                                    Res.drawable.ic_cat_bread,
+                                    Color(0xFFFDF5E8),
+                                    Color(0xFFB07A2B)
+                                ),
+                                CategoryUi(
+                                    "Leche",
+                                    Res.drawable.ic_cat_milk,
+                                    Color(0xFFEFF6FE),
+                                    Color(0xFF3A6EA5)
+                                ),
+                                CategoryUi(
+                                    "Yogures",
+                                    Res.drawable.ic_cat_yogurts,
+                                    Color(0xFFEFF6FE),
+                                    Color(0xFF3A6EA5)
+                                ),
+                                CategoryUi(
+                                    "Queso",
+                                    Res.drawable.ic_cat_cheese,
+                                    Color(0xFFFFF8DD),
+                                    Color(0xFFAF8B00)
+                                ),
+                                CategoryUi(
+                                    "Huevos",
+                                    Res.drawable.ic_cat_eggs,
+                                    Color(0xFFFBF1E7),
+                                    Color(0xFF9E6A2A)
+                                ),
+                                CategoryUi(
+                                    "Pasta/Arroz",
+                                    Res.drawable.ic_cat_pasta_rice_legumes,
+                                    Color(0xFFF9F3E3),
+                                    Color(0xFF9A7B31)
+                                ),
+                                CategoryUi(
+                                    "Conservas",
+                                    Res.drawable.ic_cat_canned_food,
+                                    Color(0xFFF3EFEA),
+                                    Color(0xFF7D6A56)
+                                ),
+                                CategoryUi(
+                                    "Congelados",
+                                    Res.drawable.ic_cat_frozen,
+                                    Color(0xFFEAF3FC),
+                                    Color(0xFF2F6FA6)
+                                ),
+                                CategoryUi(
+                                    "Agua",
+                                    Res.drawable.ic_cat_water_bottle,
+                                    Color(0xFFEAF3FC),
+                                    Color(0xFF2F6FA6)
+                                ),
+                                CategoryUi(
+                                    "Refrescos",
+                                    Res.drawable.ic_cat_soft_drinks,
+                                    Color(0xFFF0F7FF),
+                                    Color(0xFF2F6FA6)
+                                ),
+                                CategoryUi(
+                                    "Zumo",
+                                    Res.drawable.ic_cat_juice,
+                                    Color(0xFFFFF3E8),
+                                    Color(0xFFB56A25)
+                                ),
+                                CategoryUi(
+                                    "Vino",
+                                    Res.drawable.ic_cat_wine,
+                                    Color(0xFFFAEEF2),
+                                    Color(0xFF91506A)
+                                ),
+                                CategoryUi(
+                                    "Cerveza",
+                                    Res.drawable.ic_cat_beer,
+                                    Color(0xFFFFF7E1),
+                                    Color(0xFFA7801B)
+                                ),
+                                CategoryUi(
+                                    "Cafe/Te",
+                                    Res.drawable.ic_cat_coffee_tea,
+                                    Color(0xFFF5F0EA),
+                                    Color(0xFF7A5D3B)
+                                ),
+                                CategoryUi(
+                                    "Snacks",
+                                    Res.drawable.ic_cat_snacks,
+                                    Color(0xFFFFF7E7),
+                                    Color(0xFFA67A1F)
+                                ),
+                                CategoryUi(
+                                    "Dulces",
+                                    Res.drawable.ic_cat_sweets,
+                                    Color(0xFFFDEDF0),
+                                    Color(0xFFB65D73)
+                                ),
+                                CategoryUi(
+                                    "Salsas",
+                                    Res.drawable.ic_cat_sauces,
+                                    Color(0xFFFDEDED),
+                                    Color(0xFFA35353)
+                                ),
+                                CategoryUi(
+                                    "Aceite/Vinagre",
+                                    Res.drawable.ic_cat_oil_vinegar,
+                                    Color(0xFFF8F7E6),
+                                    Color(0xFF8A8331)
+                                ),
+                                CategoryUi(
+                                    "Platos listos",
+                                    Res.drawable.ic_cat_ready_meals,
+                                    Color(0xFFFBF2E7),
+                                    Color(0xFFA36A39)
+                                ),
+                                CategoryUi(
+                                    "Limpieza",
+                                    Res.drawable.ic_cat_cleaning,
+                                    Color(0xFFEAF4FD),
+                                    Color(0xFF3A7FB2)
+                                ),
+                                CategoryUi(
+                                    "Higiene",
+                                    Res.drawable.ic_cat_hygiene,
+                                    Color(0xFFEAF7F6),
+                                    Color(0xFF2E817E)
+                                ),
+                                CategoryUi(
+                                    "Mascotas",
+                                    Res.drawable.ic_cat_pets,
+                                    Color(0xFFF6F1EA),
+                                    Color(0xFF7A6550)
+                                ),
+                                CategoryUi(
+                                    "Otros",
+                                    Res.drawable.ic_cat_other,
+                                    Color(0xFFF5F3EE),
+                                    Color(0xFF6E6A60)
+                                ),
+                            )
+                            items(categories) { category ->
+                                val selected = state.destination == category.label
+                                CategoryCard(
+                                    category = category,
+                                    selected = selected,
+                                    modifier = Modifier.size(84.dp),
+                                ) { onDestinationChange(category.label) }
+                            }
+                        }
+                    }
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
+
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .border(1.dp, NcBorder, RoundedCornerShape(14.dp)),
+                        ) {
+                            SegmentedTab(
+                                "Unidades",
+                                quantityMode == "Unidades",
+                                Modifier.weight(1f)
+                            ) {
+                                quantityMode = "Unidades"
+                            }
+                            SegmentedTab("Peso", quantityMode == "Peso", Modifier.weight(1f)) {
+                                quantityMode = "Peso"
+                            }
+                        }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                        ) {
+                            CircleControlButton(label = "−", filled = false) {
+                                onQuantityChange((quantity - 1).coerceAtLeast(1).toString())
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            OutlinedTextField(
+                                value = state.quantity,
+                                onValueChange = { raw ->
+                                    val filtered = if (quantityMode == "Peso") {
+                                        raw.filter { it.isDigit() || it == '.' || it == ',' }
+                                    } else {
+                                        raw.filter(Char::isDigit)
+                                    }
+                                    onQuantityChange(filtered)
+                                },
+                                modifier = Modifier.width(62.dp),
+                                singleLine = true,
+                                shape = RoundedCornerShape(10.dp),
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = if (quantityMode == "Peso") KeyboardType.Decimal else KeyboardType.Number,
+                                ),
+                                textStyle = androidx.compose.ui.text.TextStyle(
+                                    color = Color(0xFF0C3E2F),
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    textAlign = TextAlign.Center,
+                                ),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedContainerColor = Color.White,
+                                    unfocusedContainerColor = Color.White,
+                                    focusedBorderColor = NcBorder,
+                                    unfocusedBorderColor = NcBorder,
+                                ),
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            CircleControlButton(label = "+", filled = true) {
+                                onQuantityChange((quantity + 1).toString())
+                            }
+                        }
+                    }
+                }
+                item {
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                            LocationChip(
+                                label = "Nevera",
+                                icon = Res.drawable.ic_nc_fridge,
+                                selected = location == "nevera",
+                                tint = NcGreen,
+                                modifier = Modifier.weight(1f),
+                            ) { location = "nevera" }
+                            LocationChip(
+                                label = "Despensa",
+                                icon = Res.drawable.ic_nc_pantry,
+                                selected = location == "despensa",
+                                tint = NcText,
+                                modifier = Modifier.weight(1f),
+                            ) { location = "despensa" }
+                            LocationChip(
+                                label = "Congelador",
+                                icon = Res.drawable.ic_nc_freezer,
+                                selected = location == "congelador",
+                                tint = Color(0xFF144FA6),
+                                modifier = Modifier.weight(1f),
+                        ) { location = "congelador" }
+                    }
+                }
+                item {
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(NcMutedBg)
+                            .clickable {
+                                onModeSelected(AddShoppingMode.Voice)
+                                onVoiceClick()
+                            }
+                            .padding(horizontal = 14.dp, vertical = 13.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(18.dp))
+                                .background(Color(0xFFE3ECE6)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                painter = painterResource(Res.drawable.ic_nc_microphone),
+                                contentDescription = null,
+                                tint = NcGreen,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                        Column(
+                            modifier = Modifier
+                                .padding(start = 10.dp)
+                                .weight(1f),
+                        ) {
+                            Text(
+                                text = "Añadir por voz",
+                                color = Color(0xFF113E2E),
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                            Text(
+                                text = "Dicta el nombre, cantidad y categoría",
+                                color = NcSubtitle,
+                            fontSize = 13.sp,
+                        )
+                    }
+                    Text(text = "›", color = NcGreen, fontSize = 24.sp)
+                }
+            }
+
+                item {
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+            }
+
+            AddToListCta(onAddToShoppingListClick)
+        }
+    }
+
+    if (false) onCameraClick()
+}
+
+@Composable
+private fun HeaderSection(
+    onBackClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Color(0xFFEAF3ED))
+                        .clickable(onClick = onBackClick),
+                    contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        painter = painterResource(Res.drawable.ic_nc_plus),
+                        painter = painterResource(Res.drawable.ic_nc_arrow_back),
                         contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        "Añadir a la lista",
-                        color = Color.White,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold
+                        tint = NcGreen,
+                        modifier = Modifier.size(17.dp),
                     )
                 }
-                Spacer(modifier = Modifier.weight(1f))
+                Text(
+                    text = "Añadir producto",
+                    color = NcGreen,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
+            Text(
+                text = "Añade un producto a tu lista\nde la compra",
+                color = NcSubtitle,
+                fontSize = 13.sp,
+                modifier = Modifier.padding(start = 34.dp, end = 6.dp),
+            )
         }
-
-        if (showNewProductModal) {
-            AddShoppingProductScreenModal(
-                productName = state.productName,
-                quantity = quantity,
-                selectedUnit = quantityToUnit(state.quantity),
-                onProductNameChange = onProductNameChange,
-                onDecrease = { onQuantityChange((quantity - 1).coerceAtLeast(1).toString()) },
-                onIncrease = { onQuantityChange((quantity + 1).toString()) },
-                onUnitChange = { unit ->
-                    val updated = when (unit) {
-                        "g" -> "500 g"
-                        "1 kg", "2 kg", "3 kg" -> unit
-                        else -> quantity.toString()
-                    }
-                    onQuantityChange(updated)
-                },
-                onConfirm = {
-                    showNewProductModal = false
-                    onAddToShoppingListClick()
-                },
-                onDismiss = { showNewProductModal = false },
+        Box(
+            modifier = Modifier.size(150.dp, 112.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painter = painterResource(Res.drawable.ref_shopping_hero_basket),
+                contentDescription = null,
+                tint = Color.Unspecified,
+                modifier = Modifier.fillMaxSize(),
             )
         }
     }
-
-    if (false) {
-        onVoiceClick()
-        onCameraClick()
-    }
 }
 
 @Composable
-private fun TopBar() {
-    Row(
-        modifier = Modifier.fillMaxWidth().height(64.dp).background(PrimaryContainer),
-        verticalAlignment = Alignment.CenterVertically,
+private fun AddToListCta(onAddToShoppingListClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(NcSurface)
+            .padding(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 0.dp),
     ) {
-        Text("←", color = Color.White, fontSize = 16.sp, modifier = Modifier.padding(start = 16.dp))
-        Text(
-            text = "Añadir Producto",
-            color = Color.White,
-            fontSize = 18.sp,
-            lineHeight = 24.sp,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.weight(1f).padding(end = 36.dp),
-        )
-    }
-}
-
-@Composable
-private fun SearchInput(
-    value: String,
-    onValueChange: (String) -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            "¿Qué necesitas comprar?",
-            color = Muted,
-            fontSize = 12.sp,
-            lineHeight = 16.sp,
-            fontWeight = FontWeight.SemiBold
-        )
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            shape = RoundedCornerShape(12.dp),
-            placeholder = {
-                Text(
-                    "Ej. Tomates fritos, Aguacate...",
-                    color = Muted.copy(alpha = 0.5f),
-                    fontSize = 16.sp
-                )
-            },
-            leadingIcon = { Text("⌕", color = Muted, fontSize = 18.sp) },
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = Color.White,
-                unfocusedContainerColor = Color.White,
-                focusedBorderColor = Primary,
-                unfocusedBorderColor = OutlineVariant,
-                focusedTextColor = Ink,
-                unfocusedTextColor = Ink,
-            ),
-        )
-    }
-}
-
-@Composable
-private fun AddNewProductButton(onClick: () -> Unit) {
-    Surface(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        color = PrimaryContainer.copy(alpha = 0.08f),
-        shape = RoundedCornerShape(14.dp),
-        border = androidx.compose.foundation.BorderStroke(1.5.dp, Primary.copy(alpha = 0.35f)),
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 13.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        Surface(
+            onClick = onAddToShoppingListClick,
+            shape = RoundedCornerShape(30.dp),
+            color = NcGreenStrong,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
         ) {
-            Box(
-                modifier = Modifier.size(32.dp).clip(RoundedCornerShape(999.dp))
-                    .background(Primary.copy(alpha = 0.12f)),
-                contentAlignment = Alignment.Center,
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
                     painter = painterResource(Res.drawable.ic_nc_plus),
                     contentDescription = null,
-                    tint = Primary,
-                    modifier = Modifier.size(16.dp),
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp),
                 )
-            }
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    "Añadir como nuevo producto",
-                    color = Primary,
+                    text = "Añadir a la lista",
+                    color = Color.White,
                     fontSize = 16.sp,
-                    lineHeight = 20.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    "Si no encuentras lo que buscas",
-                    color = Muted,
-                    fontSize = 11.sp,
-                    lineHeight = 16.sp
+                    fontWeight = FontWeight.Bold,
                 )
             }
-            Text("›", color = Primary, fontSize = 20.sp)
         }
     }
 }
 
 @Composable
-private fun CategoryStrip(
-    selectedCategory: String,
-    onCategorySelected: (String) -> Unit,
-) {
-    val categories = listOf(
-        CategoryUi("Frutas", Res.drawable.ic_cat_fruits, Color(0xFFF8E4A8)),
-        CategoryUi("Verduras", Res.drawable.ic_cat_vegetables, Color(0xFFC6E9AC)),
-        CategoryUi("Carne", Res.drawable.ic_cat_meat, Color(0xFFF0C5C8)),
-        CategoryUi("Pescado", Res.drawable.ic_cat_fish, Color(0xFFBFD4E8)),
-        CategoryUi("Marisco", Res.drawable.ic_cat_seafood, Color(0xFFC9E0E8)),
-        CategoryUi("Pan", Res.drawable.ic_cat_bread, Color(0xFFF6D8A7)),
-        CategoryUi("Leche", Res.drawable.ic_cat_milk, Color(0xFFDDEAF6)),
-        CategoryUi("Yogures", Res.drawable.ic_cat_yogurts, Color(0xFFCBE3F4)),
-        CategoryUi("Queso", Res.drawable.ic_cat_cheese, Color(0xFFFCE99B)),
-        CategoryUi("Huevos", Res.drawable.ic_cat_eggs, Color(0xFFE9D6BE)),
-        CategoryUi("Pasta/Arroz", Res.drawable.ic_cat_pasta_rice_legumes, Color(0xFFE9D9A7)),
-        CategoryUi("Conservas", Res.drawable.ic_cat_canned_food, Color(0xFFD9D0C4)),
-        CategoryUi("Congelados", Res.drawable.ic_cat_frozen, Color(0xFFCCE1F4)),
-        CategoryUi("Agua", Res.drawable.ic_cat_water_bottle, Color(0xFFBBDAF0)),
-        CategoryUi("Zumo", Res.drawable.ic_cat_juice, Color(0xFFF2D1A8)),
-        CategoryUi("Vino", Res.drawable.ic_cat_wine, Color(0xFFE6C4CF)),
-        CategoryUi("Cerveza", Res.drawable.ic_cat_beer, Color(0xFFEFD89E)),
-        CategoryUi("Café/Te", Res.drawable.ic_cat_coffee_tea, Color(0xFFE5DACC)),
-        CategoryUi("Snacks", Res.drawable.ic_cat_snacks, Color(0xFFEFDFA4)),
-        CategoryUi("Dulces", Res.drawable.ic_cat_sweets, Color(0xFFF1C0C5)),
-        CategoryUi("Salsas", Res.drawable.ic_cat_sauces, Color(0xFFF1B7B7)),
-        CategoryUi("Aceite/Vinagre", Res.drawable.ic_cat_oil_vinegar, Color(0xFFE5E2AC)),
-        CategoryUi("Platos listos", Res.drawable.ic_cat_ready_meals, Color(0xFFEED4B8)),
-        CategoryUi("Limpieza", Res.drawable.ic_cat_cleaning, Color(0xFFBFDDF1)),
-        CategoryUi("Higiene", Res.drawable.ic_cat_hygiene, Color(0xFFC7E6E4)),
-        CategoryUi("Mascotas", Res.drawable.ic_cat_pets, Color(0xFFE4D8C8)),
-        CategoryUi("Otros", Res.drawable.ic_cat_other, Color(0xFFE5D7BF)),
+private fun CardBlock(content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(NcCard)
+            .border(1.dp, Color(0xFFF0F2F4), RoundedCornerShape(20.dp))
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        content = content,
     )
-
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(
-            "Categorías",
-            color = Ink,
-            fontSize = 22.sp,
-            lineHeight = 28.sp,
-            fontWeight = FontWeight.SemiBold
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            categories.forEach { category ->
-                val selected = selectedCategory == category.label
-                Surface(
-                    onClick = { onCategorySelected(category.label) },
-                    color = Color.Transparent,
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier.size(56.dp).clip(RoundedCornerShape(14.dp))
-                                .background(if (selected) category.bg.copy(alpha = 0.95f) else category.bg.copy(alpha = 0.55f))
-                                .border(
-                                    width = if (selected) 1.5.dp else 0.dp,
-                                    color = if (selected) Primary else Color.Transparent,
-                                    shape = RoundedCornerShape(14.dp),
-                                )
-                            ,contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                painter = painterResource(category.icon),
-                                contentDescription = category.label,
-                                tint = Color.Unspecified,
-                                modifier = Modifier.size(34.dp),
-                            )
-                        }
-                        Text(
-                            category.label,
-                            color = if (selected) Primary else Ink,
-                            fontSize = 11.sp,
-                            lineHeight = 16.sp,
-                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
-            }
-        }
-    }
 }
 
 @Composable
-private fun WeightInputSection(
-    productName: String,
-    quantityText: String,
-    onProductNameChange: (String) -> Unit,
-    onQuantityChange: (String) -> Unit,
+private fun SectionTitle(
+    text: String,
+    fontSize: androidx.compose.ui.unit.TextUnit = 17.sp,
 ) {
-    var selectedWeightMode by remember(quantityText) {
-        mutableStateOf(
-            when {
-                quantityText.endsWith("kg") -> quantityText
-                quantityText.endsWith("g") -> "g"
-                else -> "g"
-            },
-        )
-    }
-    var gramsText by remember(quantityText) {
-        mutableStateOf(quantityText.removeSuffix(" g").trim().takeIf { quantityText.endsWith("g") } ?: "500")
-    }
-
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(
-            "Nombre del producto",
-            color = Muted,
-            fontSize = 12.sp,
-            lineHeight = 16.sp,
-            fontWeight = FontWeight.SemiBold,
-        )
-        OutlinedTextField(
-            value = productName,
-            onValueChange = onProductNameChange,
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            shape = RoundedCornerShape(12.dp),
-            placeholder = { Text("Ej. Arroz redondo", color = Muted.copy(alpha = 0.55f), fontSize = 16.sp) },
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = Color.White,
-                unfocusedContainerColor = Color.White,
-                focusedBorderColor = Primary,
-                unfocusedBorderColor = OutlineVariant,
-                focusedTextColor = Ink,
-                unfocusedTextColor = Ink,
-            ),
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
-                .background(SurfaceContainer)
-                .border(1.dp, SurfaceVariant, RoundedCornerShape(16.dp))
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Box(
-                    modifier = Modifier.size(36.dp).clip(RoundedCornerShape(999.dp)).background(SurfaceVariant),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text("#", color = Muted, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-                }
-                Text("Cantidad", color = Ink, fontSize = 16.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold)
-            }
-            Row(
-                modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(Color.White).padding(3.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                WeightChip(
-                    selected = selectedWeightMode == "g",
-                    label = "g",
-                    onClick = {
-                        selectedWeightMode = "g"
-                        onQuantityChange("${gramsText.ifBlank { "500" }} g")
-                    },
-                )
-                listOf("1 kg", "2 kg", "3 kg").forEach { option ->
-                    WeightChip(
-                        selected = selectedWeightMode == option,
-                        label = option,
-                        onClick = {
-                            selectedWeightMode = option
-                            onQuantityChange(option)
-                        },
-                    )
-                }
-            }
-        }
-        if (selectedWeightMode == "g") {
-            OutlinedTextField(
-                value = gramsText,
-                onValueChange = {
-                    val filtered = it.filter(Char::isDigit).take(4)
-                    gramsText = filtered
-                    if (filtered.isNotBlank()) onQuantityChange("$filtered g")
-                },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                placeholder = { Text("Cantidad en gramos", color = Muted.copy(alpha = 0.55f), fontSize = 14.sp) },
-                suffix = { Text("g", color = Muted, fontSize = 14.sp) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Color.White,
-                    unfocusedContainerColor = Color.White,
-                    focusedBorderColor = Primary,
-                    unfocusedBorderColor = OutlineVariant,
-                    focusedTextColor = Ink,
-                    unfocusedTextColor = Ink,
-                ),
-            )
-        }
-        HorizontalDivider(color = OutlineVariant.copy(alpha = 0.5f))
-    }
+    Text(
+        text = text,
+        color = Color(0xFF0D3E2F),
+        fontSize = fontSize,
+        fontWeight = FontWeight.Bold,
+    )
 }
 
 @Composable
-private fun WeightChip(
+private fun CategoryCard(
+    category: CategoryUi,
     selected: Boolean,
-    label: String,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    Surface(
-        onClick = onClick,
-        color = if (selected) Primary else Color.Transparent,
-        shape = RoundedCornerShape(999.dp),
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(category.bg)
+            .border(
+                width = if (selected) 2.dp else 1.dp,
+                color = if (selected) category.tint else category.bg,
+                shape = RoundedCornerShape(14.dp),
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 6.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceEvenly,
+    ) {
+        Icon(
+            painter = painterResource(category.icon),
+            contentDescription = category.label,
+            tint = Color.Unspecified,
+            modifier = Modifier.size(48.dp),
+        )
+        Text(
+            text = category.label,
+            color = if (selected) NcGreen else NcText,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun SegmentedTab(
+    label: String,
+    selected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(if (selected) Color(0xFFEAF3ED) else Color.Transparent)
+            .clickable(onClick = onClick)
+            .padding(vertical = 10.dp),
+        contentAlignment = Alignment.Center,
     ) {
         Text(
             text = label,
-            color = if (selected) Color.White else Ink,
-            fontSize = 13.sp,
-            lineHeight = 18.sp,
+            color = if (selected) NcGreen else NcText,
+            fontSize = 15.sp,
             fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
         )
     }
 }
 
 @Composable
-private fun QuantitySelector(
-    quantity: Int,
-    onDecrease: () -> Unit,
-    onIncrease: () -> Unit,
+private fun CircleControlButton(
+    label: String,
+    filled: Boolean,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(if (filled) NcGreenStrong else Color(0xFFE4EEE7))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            color = if (filled) Color.White else Color(0xFF19503D),
+            fontSize = 22.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
+    }
+}
+
+@Composable
+private fun LocationChip(
+    label: String,
+    icon: DrawableResource,
+    selected: Boolean,
+    tint: Color,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
-            .background(SurfaceContainer)
-            .border(1.dp, SurfaceVariant, RoundedCornerShape(16.dp))
-            .padding(horizontal = 12.dp, vertical = 12.dp),
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(if (selected) Color(0xFFE9F2EC) else Color(0xFFF4F5F7))
+            .border(1.dp, if (selected) NcGreen else Color(0xFFE2E5E9), RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.Center,
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Box(
-                modifier = Modifier.size(36.dp).clip(RoundedCornerShape(999.dp))
-                    .background(SurfaceVariant),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("#", color = Muted, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-            }
-            Text(
-                "Cantidad",
-                color = Ink,
-                fontSize = 22.sp,
-                lineHeight = 28.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
-
-        Row(
-            modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(Surface).padding(2.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            IconButton(onClick = onDecrease, modifier = Modifier.size(32.dp)) {
-                Text("−", color = Muted, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-            }
-            Text(
-                text = quantity.toString(),
-                color = Ink,
-                fontSize = 18.sp,
-                lineHeight = 24.sp,
-                textAlign = TextAlign.Center,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.width(24.dp),
-            )
-            Box(
-                modifier = Modifier.size(32.dp).clip(RoundedCornerShape(999.dp))
-                    .background(PrimaryContainer),
-                contentAlignment = Alignment.Center,
-            ) {
-                IconButton(onClick = onIncrease, modifier = Modifier.size(32.dp)) {
-                    Text(
-                        "+",
-                        color = Color.White,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-        }
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = label,
+            tint = tint,
+            modifier = Modifier.size(22.dp),
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = label,
+            color = if (selected) NcGreen else NcText,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Clip,
+        )
     }
 }
 
@@ -620,22 +798,5 @@ private data class CategoryUi(
     val label: String,
     val icon: DrawableResource,
     val bg: Color,
+    val tint: Color,
 )
-
-private fun isWeightCategory(category: String): Boolean = category in setOf(
-    "Pasta/Arroz",
-    "Carne",
-    "Pescado",
-    "Marisco",
-    "Frutas",
-    "Verduras",
-    "Queso",
-)
-
-private fun quantityToUnit(quantityText: String): String {
-    return when {
-        quantityText.endsWith(" g") -> "g"
-        quantityText == "1 kg" || quantityText == "2 kg" || quantityText == "3 kg" -> quantityText
-        else -> "ud"
-    }
-}
