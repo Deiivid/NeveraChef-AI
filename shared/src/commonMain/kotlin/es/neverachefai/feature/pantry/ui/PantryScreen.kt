@@ -416,11 +416,11 @@ private fun SectionHeader(location: PantryLocation, count: Int) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            LocationGlyph(location = location, containerSize = 34.dp, iconSize = 22.dp)
+            LocationGlyph(location = location, containerSize = 30.dp, iconSize = 19.dp)
             Text(
                 text = location.title,
                 color = Color(0xFF042D1F),
-                fontSize = 16.sp,
+                fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
             )
         }
@@ -432,9 +432,9 @@ private fun SectionHeader(location: PantryLocation, count: Int) {
                         PantryLocation.PANTRY -> Color(0xFFF9F0DE)
                         PantryLocation.FREEZER -> Color(0xFFE5ECFB)
                     },
-                    RoundedCornerShape(14.dp),
+                    RoundedCornerShape(12.dp),
                 )
-                .padding(horizontal = 11.dp, vertical = 5.dp),
+                .padding(horizontal = 9.dp, vertical = 3.dp),
             contentAlignment = Alignment.Center,
         ) {
             Text(
@@ -444,7 +444,7 @@ private fun SectionHeader(location: PantryLocation, count: Int) {
                     PantryLocation.PANTRY -> Color(0xFF9A6310)
                     PantryLocation.FREEZER -> Color(0xFF2C6DC7)
                 },
-                fontSize = 18.sp,
+                fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
             )
         }

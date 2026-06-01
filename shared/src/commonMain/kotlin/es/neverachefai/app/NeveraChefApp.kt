@@ -154,16 +154,23 @@ fun NeveraChefApp(
                             onModeSelected = { addShoppingState = addShoppingState.copy(selectedMode = it) },
                             onProductNameChange = { addShoppingState = addShoppingState.copy(productName = it) },
                             onQuantityChange = { addShoppingState = addShoppingState.copy(quantity = it) },
+                            onQuantityModeChange = { addShoppingState = addShoppingState.copy(quantityMode = it) },
                             onDestinationChange = { addShoppingState = addShoppingState.copy(destination = it) },
+                            onLocationChange = { addShoppingState = addShoppingState.copy(location = it) },
                             onVoiceClick = {
                                 if (!microphonePermissionGranted) {
                                     onRequestMicrophonePermission()
                                 } else {
                                     onRequestSpeechToText { spokenText ->
-                                        val normalized = spokenText.trim()
-                                        if (normalized.isNotEmpty()) {
-                                            addShoppingState = addShoppingState.copy(productName = normalized)
-                                        }
+                                        val parsed = parseSpokenShoppingInput(spokenText)
+                                        addShoppingState = addShoppingState.copy(
+                                            selectedMode = es.neverachefai.feature.shopping.ui.AddShoppingMode.Voice,
+                                            productName = parsed.productName ?: addShoppingState.productName,
+                                            destination = parsed.category ?: addShoppingState.destination,
+                                            quantity = parsed.quantity ?: addShoppingState.quantity,
+                                            quantityMode = parsed.quantityMode ?: addShoppingState.quantityMode,
+                                            location = parsed.location ?: addShoppingState.location,
+                                        )
                                     }
                                 }
                             },
@@ -173,8 +180,11 @@ fun NeveraChefApp(
                                 val itemName = addShoppingState.productName.trim()
                                 if (itemName.isNotEmpty()) {
                                     val iconKey = addShoppingState.destination.toCategoryIconKey()
-                                    val destinationKey = iconKey.toDestinationKey()
-                                    val parsedQuantity = parseQuantityInput(addShoppingState.quantity)
+                                    val destinationKey = addShoppingState.location.toDestinationKey()
+                                    val parsedQuantity = parseQuantityInput(
+                                        rawValue = addShoppingState.quantity,
+                                        quantityMode = addShoppingState.quantityMode,
+                                    )
                                     val currentItems = LocalAppContentStore.loadShoppingItems().toMutableList()
                                     currentItems += ShoppingItemRecord(
                                         id = "shopping_${currentItems.size + 1}_${itemName.lowercase().replace(" ", "_")}",
@@ -246,17 +256,27 @@ private fun String.toCategoryIconKey(): String {
 
 private fun String.toDestinationKey(): String {
     return when (this) {
-        "frozen", "fish", "seafood" -> "freezer"
-        "milk", "yogurts", "cheese", "fruits", "vegetables", "eggs", "juice", "soft_drinks" -> "fridge"
+        "congelador" -> "freezer"
+        "nevera" -> "fridge"
         else -> "pantry"
     }
 }
 
 private data class ParsedQuantity(val value: String, val unit: String, val displayLabel: String)
 
-private fun parseQuantityInput(rawValue: String): ParsedQuantity {
+private fun parseQuantityInput(rawValue: String, quantityMode: String): ParsedQuantity {
     val normalized = rawValue.trim()
     if (normalized.isBlank()) return ParsedQuantity("1", "unidades", "1 unidades")
+
+    if (quantityMode == "Peso") {
+        val grams = normalized.toIntOrNull()?.coerceAtLeast(0) ?: 0
+        if (grams >= 1000) {
+            val kg = grams / 1000.0
+            val value = if (kg % 1.0 == 0.0) kg.toInt().toString() else kg.toString().replace('.', ',')
+            return ParsedQuantity(value, "kg", "$value kg")
+        }
+        return ParsedQuantity(grams.toString(), "gr", "${grams} gr")
+    }
 
     val parts = normalized.split(" ").filter { it.isNotBlank() }
     if (parts.size >= 2) {
@@ -267,4 +287,150 @@ private fun parseQuantityInput(rawValue: String): ParsedQuantity {
 
     val numericValue = normalized.toIntOrNull()?.coerceAtLeast(1)?.toString() ?: "1"
     return ParsedQuantity(numericValue, "unidades", "$numericValue unidades")
+}
+
+private data class ParsedSpokenShoppingInput(
+    val productName: String? = null,
+    val category: String? = null,
+    val quantity: String? = null,
+    val quantityMode: String? = null,
+    val location: String? = null,
+)
+
+private fun parseSpokenShoppingInput(rawText: String): ParsedSpokenShoppingInput {
+    val original = rawText.trim()
+    if (original.isBlank()) return ParsedSpokenShoppingInput()
+    val text = normalizeVoiceText(original)
+
+    val categoryMap = listOf(
+        "frutas" to listOf("fruta", "frutas", "fresa", "fresas"),
+        "verduras" to listOf("verdura", "verduras", "vegetales"),
+        "carne" to listOf("carne", "carnes"),
+        "pescado" to listOf("pescado", "pescados", "pez"),
+        "marisco" to listOf("marisco", "mariscos"),
+        "pan" to listOf("pan", "panes"),
+        "leche" to listOf("leche", "lacteo", "lacteos"),
+        "yogures" to listOf("yogur", "yogures", "yoghurt"),
+        "queso" to listOf("queso", "quesos"),
+        "huevos" to listOf("huevo", "huevos"),
+        "pasta/arroz" to listOf("pasta", "arroz", "legumbres"),
+        "conservas" to listOf("conserva", "conservas"),
+        "congelados" to listOf("congelado", "congelados"),
+        "agua" to listOf("agua"),
+        "refrescos" to listOf("refresco", "refrescos"),
+        "zumo" to listOf("zumo", "zumos", "jugo"),
+        "vino" to listOf("vino", "vinos"),
+        "cerveza" to listOf("cerveza", "cervezas"),
+        "cafe/te" to listOf("cafe", "te"),
+        "snacks" to listOf("snack", "snacks", "aperitivos"),
+        "dulces" to listOf("dulce", "dulces"),
+        "salsas" to listOf("salsa", "salsas"),
+        "aceite/vinagre" to listOf("aceite", "vinagre"),
+        "platos listos" to listOf("plato listo", "platos listos"),
+        "limpieza" to listOf("limpieza"),
+        "higiene" to listOf("higiene"),
+        "mascotas" to listOf("mascota", "mascotas"),
+        "otros" to listOf("otros", "otro"),
+    )
+    val locationMap = mapOf(
+        "nevera" to listOf("nevera", "frigorifico", "frigo", "refrigerador"),
+        "despensa" to listOf("despensa", "despnesa", "armario"),
+        "congelador" to listOf("congelador", "congelar"),
+    )
+
+    val category = categoryMap.firstNotNullOfOrNull { (canonical, aliases) ->
+        if (aliases.any { alias -> Regex("\\b${Regex.escape(alias)}\\b").containsMatchIn(text) }) canonical else null
+    }
+    val location = locationMap.entries.firstNotNullOfOrNull { (canonical, aliases) ->
+        if (aliases.any { alias -> Regex("\\b${Regex.escape(alias)}\\b").containsMatchIn(text) }) canonical else null
+    }
+
+    val kgMatch = Regex("(\\d+(?:[\\.,]\\d+)?)\\s*(kg|kilo|kilos|kilogramo|kilogramos)").find(text)
+    val grMatch = Regex("(\\d+)\\s*(g|gr|gramo|gramos)").find(text)
+    val unitsMatch = Regex("(?:cantidad|cantid|unidades|unidad|uds|ud)\\s*(\\d+)").find(text)
+    val explicitWeightValue = Regex("(?:peso|pesa|pesar)\\s*(\\d+(?:[\\.,]\\d+)?)").find(text)
+    val explicitQuantityValue = Regex("(?:cantidad|cantid|unidades|unidad|uds|ud)\\s*(\\d+)").find(text)
+    val looseNumber = Regex("\\b(\\d+)\\b").find(text)
+
+    val quantityMode: String?
+    val quantity: String?
+    when {
+        kgMatch != null -> {
+            val kgValue = kgMatch.groupValues[1].replace(',', '.').toDoubleOrNull() ?: 0.0
+            quantity = (kgValue * 1000.0).toInt().coerceAtLeast(0).toString()
+            quantityMode = "Peso"
+        }
+        grMatch != null -> {
+            quantity = (grMatch.groupValues[1].toIntOrNull() ?: 0).coerceAtLeast(0).toString()
+            quantityMode = "Peso"
+        }
+        explicitWeightValue != null -> {
+            val numeric = explicitWeightValue.groupValues[1].replace(',', '.').toDoubleOrNull() ?: 0.0
+            quantity = if (numeric <= 0.0) "0" else (numeric * 1000.0).toInt().toString()
+            quantityMode = "Peso"
+        }
+        text.contains("peso") && looseNumber != null -> {
+            quantity = (looseNumber.groupValues[1].toIntOrNull() ?: 0).coerceAtLeast(0).toString()
+            quantityMode = "Peso"
+        }
+        explicitQuantityValue != null -> {
+            quantity = (explicitQuantityValue.groupValues[1].toIntOrNull() ?: 1).coerceAtLeast(1).toString()
+            quantityMode = "Unidades"
+        }
+        unitsMatch != null -> {
+            quantity = (unitsMatch.groupValues[1].toIntOrNull() ?: 1).coerceAtLeast(1).toString()
+            quantityMode = "Unidades"
+        }
+        looseNumber != null -> {
+            quantity = (looseNumber.groupValues[1].toIntOrNull() ?: 1).coerceAtLeast(1).toString()
+            quantityMode = "Unidades"
+        }
+        else -> {
+            quantity = null
+            quantityMode = null
+        }
+    }
+
+    val productName = extractProductNameFromVoice(original)
+
+    return ParsedSpokenShoppingInput(
+        productName = productName,
+        category = category,
+        quantity = quantity,
+        quantityMode = quantityMode,
+        location = location,
+    )
+}
+
+private fun normalizeVoiceText(value: String): String {
+    return value
+        .lowercase()
+        .replace("á", "a")
+        .replace("é", "e")
+        .replace("í", "i")
+        .replace("ó", "o")
+        .replace("ú", "u")
+}
+
+private fun extractProductNameFromVoice(rawText: String): String? {
+    var cleaned = normalizeVoiceText(rawText)
+    val dropPatterns = listOf(
+        "\\b(en\\s+)?(nevera|frigorifico|frigo|refrigerador|despensa|despnesa|congelador)\\b",
+        "\\b(frutas?|verduras?|vegetales?|carne|carnes|pescado|pescados|marisco|mariscos)\\b",
+        "\\b(peso|cantidad|cantid|unidades?|uds?|ud)\\b",
+        "\\b\\d+(?:[\\.,]\\d+)?\\s*(kg|kilo|kilos|kilogramo|kilogramos|g|gr|gramo|gramos)\\b",
+        "\\b\\d+\\b",
+    )
+    dropPatterns.forEach { pattern ->
+        cleaned = cleaned.replace(Regex(pattern), " ")
+    }
+    cleaned = cleaned
+        .replace(Regex("[,;:]+"), " ")
+        .replace(Regex("\\s+"), " ")
+        .trim()
+
+    if (cleaned.isBlank()) return null
+    return cleaned.split(" ").joinToString(" ") { token ->
+        token.replaceFirstChar { ch -> if (ch.isLowerCase()) ch.titlecase() else ch.toString() }
+    }
 }

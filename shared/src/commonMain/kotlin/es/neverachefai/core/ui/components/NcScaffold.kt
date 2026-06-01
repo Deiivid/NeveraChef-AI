@@ -67,7 +67,7 @@ fun NeveraBottomNavigation(
     ) {
         Row(
             modifier = Modifier
-                .padding(start = 21.dp, top = 12.dp, end = 21.dp, bottom = 21.dp)
+                .padding(start = 21.dp, top = 12.dp, end = 21.dp, bottom = 8.dp)
                 .height(62.dp)
                 .background(Color.White, RoundedCornerShape(31.dp))
                 .border(1.dp, NeveraChefColors.Line, RoundedCornerShape(31.dp))

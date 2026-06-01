@@ -27,6 +27,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,6 +37,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -74,6 +79,9 @@ import neverachefai.shared.generated.resources.ic_cat_water_bottle
 import neverachefai.shared.generated.resources.ic_cat_wine
 import neverachefai.shared.generated.resources.ic_cat_yogurts
 import neverachefai.shared.generated.resources.ic_nc_check_square
+import neverachefai.shared.generated.resources.ic_nc_freezer
+import neverachefai.shared.generated.resources.ic_nc_fridge
+import neverachefai.shared.generated.resources.ic_nc_pantry
 import neverachefai.shared.generated.resources.ic_nc_plus
 import neverachefai.shared.generated.resources.ic_nc_shopping_basket
 import neverachefai.shared.generated.resources.ic_nc_trash
@@ -114,7 +122,10 @@ fun ShoppingListScreen(
     }
     var deleteMode by remember { mutableStateOf(false) }
     var selectedItemIds by remember { mutableStateOf(setOf<String>()) }
+    var fixedTopContentHeightPx by remember { mutableIntStateOf(0) }
     val selectionMode = deleteMode || selectedItemIds.isNotEmpty()
+    val density = LocalDensity.current
+    val listTopPadding = with(density) { fixedTopContentHeightPx.toDp() }
 
     val addedCount = items.size
     val markedCount = items.count { it.checked }
@@ -124,7 +135,13 @@ fun ShoppingListScreen(
             .fillMaxSize()
             .padding(start = 4.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .onGloballyPositioned { coordinates ->
+                    fixedTopContentHeightPx = coordinates.size.height
+                },
+        ) {
             ShoppingHeader(
                 addedCount = addedCount,
                 deleteMode = deleteMode,
@@ -137,7 +154,40 @@ fun ShoppingListScreen(
                     }
                 },
             )
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFFEEF7F2))
+                    .border(1.dp, Color(0xFFD7EBDD), RoundedCornerShape(12.dp))
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFDCEFE5)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_nc_check_square),
+                        contentDescription = null,
+                        tint = Green,
+                        modifier = Modifier.size(12.dp),
+                    )
+                }
+                Text(
+                    text = "Selecciona los productos que ya tienes en tu cesta y finaliza la compra",
+                    color = Ink,
+                    fontSize = 12.sp,
+                    lineHeight = 15.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -159,7 +209,7 @@ fun ShoppingListScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = 192.dp),
+                .padding(top = listTopPadding),
         ) {
             item { Spacer(modifier = Modifier.height(10.dp)) }
 
@@ -218,6 +268,7 @@ fun ShoppingListScreen(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(18.dp))
                             .background(Color(0xFFE9F7EF))
+                            .border(1.dp, Color(0xFF0A7A4B), RoundedCornerShape(18.dp))
                             .clickable { finalizeCheckedItems(items, shoppingRepository, pantryRepository) }
                             .padding(vertical = 14.dp),
                         contentAlignment = Alignment.Center,
@@ -239,7 +290,7 @@ fun ShoppingListScreen(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(end = 18.dp, bottom = 22.dp)
-                .size(62.dp)
+                .size(54.dp)
                 .clip(CircleShape)
                 .background(FabGreen)
                 .clickable(onClick = onAddProductClick),
@@ -249,7 +300,7 @@ fun ShoppingListScreen(
                 painter = painterResource(Res.drawable.ic_nc_plus),
                 contentDescription = "Añadir producto",
                 tint = Color.White,
-                modifier = Modifier.size(30.dp),
+                modifier = Modifier.size(26.dp),
             )
         }
     }
@@ -327,11 +378,11 @@ private fun MetricChip(
 ) {
     Row(
         modifier = modifier
-            .height(48.dp)
-            .clip(RoundedCornerShape(18.dp))
-            .border(1.dp, SoftLine, RoundedCornerShape(28.dp))
-            .padding(horizontal = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+            .height(42.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .border(1.dp, SoftLine, RoundedCornerShape(24.dp))
+            .padding(horizontal = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) {
@@ -339,14 +390,14 @@ private fun MetricChip(
                 painter = painterResource(icon),
                 contentDescription = null,
                 tint = Ink,
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(16.dp),
             )
         }
         Text(
             text = text,
             color = Ink,
-            fontSize = 14.sp,
-            lineHeight = 18.sp,
+            fontSize = 13.sp,
+            lineHeight = 16.sp,
             fontWeight = FontWeight.Medium,
         )
     }
@@ -364,9 +415,9 @@ private fun ShoppingListRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(if (selectionMode && deleteSelected) Color(0xFFF5FAF5) else if (item.checked) Color(0xFFF5FAF5) else Color.White)
-            .border(1.dp, CardLine, RoundedCornerShape(18.dp))
+            .border(1.dp, CardLine, RoundedCornerShape(16.dp))
             .combinedClickable(
                 onClick = {
                     if (selectionMode) {
@@ -377,11 +428,11 @@ private fun ShoppingListRow(
                 },
                 onLongClick = onLongSelect,
             )
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            modifier = Modifier.size(32.dp),
+            modifier = Modifier.size(30.dp),
             contentAlignment = Alignment.Center,
         ) {
             if (selectionMode) {
@@ -398,7 +449,7 @@ private fun ShoppingListRow(
             } else {
                 Box(
                     modifier = Modifier
-                        .size(28.dp)
+                        .size(26.dp)
                         .clip(CircleShape)
                         .background(if (item.checked) Green else Color.White)
                         .border(1.dp, if (item.checked) Green else Color(0xFF5A616D), CircleShape),
@@ -423,24 +474,78 @@ private fun ShoppingListRow(
             Text(
                 text = item.name,
                 color = if (item.checked) Color(0xFF5D8B6E) else Ink,
-                fontSize = 15.sp,
-                lineHeight = 19.sp,
+                fontSize = 14.sp,
+                lineHeight = 18.sp,
                 fontWeight = FontWeight.SemiBold,
                 textDecoration = if (item.checked) TextDecoration.LineThrough else TextDecoration.None,
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = item.quantity,
-                color = Muted,
-                fontSize = 12.sp,
-                lineHeight = 16.sp,
+                color = if (item.checked) Color(0xFF5D8B6E) else Muted,
+                fontSize = 11.sp,
+                lineHeight = 14.sp,
+                textDecoration = if (item.checked) TextDecoration.LineThrough else TextDecoration.None,
             )
+            Spacer(modifier = Modifier.height(4.dp))
+            LocationPill(destinationKey = item.destinationKey, checked = item.checked)
         }
 
         Image(
             painter = painterResource(item.iconRes),
             contentDescription = item.name,
-            modifier = Modifier.size(52.dp),
+            modifier = Modifier.size(44.dp),
+            alpha = if (item.checked) 0.7f else 1f,
+            colorFilter = if (item.checked) {
+                ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) })
+            } else {
+                null
+            },
+        )
+    }
+}
+
+@Composable
+private fun LocationPill(destinationKey: String, checked: Boolean = false) {
+    val normalized = normalizeDestinationKey(destinationKey)
+    val icon = when (normalized) {
+        "fridge" -> Res.drawable.ic_nc_fridge
+        "freezer" -> Res.drawable.ic_nc_freezer
+        else -> Res.drawable.ic_nc_pantry
+    }
+    val label = when (normalized) {
+        "fridge" -> "Nevera"
+        "freezer" -> "Congelador"
+        else -> "Despensa"
+    }
+    val tint = when (normalized) {
+        "fridge" -> Color(0xFF006C4D)
+        "freezer" -> Color(0xFF185CC4)
+        else -> Color(0xFFB06B12)
+    }
+    val effectiveTint = if (checked) tint.copy(alpha = 0.65f) else tint
+
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(effectiveTint.copy(alpha = 0.14f))
+            .padding(horizontal = 8.dp, vertical = 3.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = label,
+            tint = effectiveTint,
+            modifier = Modifier.size(12.dp),
+        )
+        Text(
+            text = label,
+            color = effectiveTint,
+            fontSize = 10.sp,
+            lineHeight = 12.sp,
+            fontWeight = FontWeight.Medium,
+            textDecoration = if (checked) TextDecoration.LineThrough else TextDecoration.None,
         )
     }
 }
@@ -526,6 +631,7 @@ private fun ShoppingListItemUi.toDomain(): ShoppingListItem {
 }
 
 private fun moveItemToPantry(item: ShoppingListItemUi, pantryRepository: PantryRepositoryImpl) {
+    val destination = normalizeDestinationKey(item.destinationKey)
     val pantryFoods = pantryRepository.loadFoods().toMutableList()
     pantryFoods += PantryFood(
         id = "pantry_${item.id}_${pantryFoods.size + 1}",
@@ -534,7 +640,7 @@ private fun moveItemToPantry(item: ShoppingListItemUi, pantryRepository: PantryR
         quantityValue = item.quantityValue,
         quantityUnit = item.quantityUnit,
         category = item.iconKey,
-        locationKey = item.destinationKey,
+        locationKey = destination,
         expiryLabel = null,
         expiryDateIso = null,
         iconKey = item.iconKey,
@@ -552,6 +658,15 @@ private fun finalizeCheckedItems(
     checkedItems.forEach { moveItemToPantry(it, pantryRepository) }
     items.removeAll { it.checked }
     shoppingRepository.saveItems(items.map { it.toDomain() })
+}
+
+private fun normalizeDestinationKey(value: String): String {
+    return when (value.trim().lowercase()) {
+        "fridge", "nevera" -> "fridge"
+        "freezer", "congelador" -> "freezer"
+        "pantry", "despensa" -> "pantry"
+        else -> "pantry"
+    }
 }
 
 private fun normalizeIconKey(iconKey: String, category: String, name: String): String {
