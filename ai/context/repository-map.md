@@ -34,5 +34,12 @@ NeveraChefAI/
 
 ## Current Workflow Records
 
-- `ai/workflows/architecture/ARCH-01-kmp-feature-layered-mvvm.md`
-- `ai/workflows/ui/FOOD-DETAIL-SCREEN-2026-06-03.md`
+- `ai/workflows/README.md`
+- `ai/workflows/architecture/ARCH-01-Definir-arquitectura-KMP-feature-layered-MVVM.md`
+- `ai/workflows/architecture/ARCH-02-Preparar-AGENTS-md-por-feature.md`
+- `ai/workflows/ui/UI-00-Preparar-referencias-y-workflow-Codex.md`
+- `ai/workflows/ui/UI-02-Implementar-Inventario.md`
+- `ai/workflows/ui/UI-03-Implementar-Lista-de-compra.md`
+- `ai/workflows/ui/UI-04-Implementar-Ajustes-local-first.md`
+- `ai/workflows/ui/UI-07-Implementar-Detalle-producto.md`
+- `ai/workflows/ui/UI-08-Implementar-Anadir-producto.md`
