@@ -29,6 +29,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -96,6 +97,7 @@ private data class QuantityPresentation(
 )
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 fun FoodDetailScreen(
     food: PantryFoodUi?,
     onBack: () -> Unit,

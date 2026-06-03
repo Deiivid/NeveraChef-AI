@@ -44,7 +44,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import es.neverachefai.core.designsystem.NeveraChefColors
-import es.neverachefai.core.persistence.PantryFoodRecord
+import es.neverachefai.feature.pantry.domain.model.PantryFood
 import neverachefai.shared.generated.resources.Res
 import neverachefai.shared.generated.resources.ic_cat_beer
 import neverachefai.shared.generated.resources.ic_cat_bread
@@ -83,7 +83,6 @@ import neverachefai.shared.generated.resources.ic_nc_trash
 import neverachefai.shared.generated.resources.ref_icon_search
 import neverachefai.shared.generated.resources.ref_icon_sliders
 import neverachefai.shared.generated.resources.ref_inventory_hero
-import es.neverachefai.feature.pantry.ui.loadExpiryReminderDays
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
@@ -109,6 +108,7 @@ data class PantryFoodUi(
 @Composable
 fun PantryScreen(
     foods: List<PantryFoodUi>,
+    expiryReminderDays: Int,
     onAdd: () -> Unit,
     onReview: () -> Unit,
     onFoodClick: (PantryFoodUi) -> Unit,
@@ -118,7 +118,7 @@ fun PantryScreen(
     var deleteMode by remember { mutableStateOf(false) }
     var selectedFoodIds by remember { mutableStateOf(setOf<String>()) }
     val selectionMode = deleteMode || selectedFoodIds.isNotEmpty()
-    val reminderDays = loadExpiryReminderDays()
+    val reminderDays = expiryReminderDays
     val filteredFoods = foods.filter { food ->
         val query = searchQuery.trim()
         if (query.isBlank()) true else {
@@ -628,27 +628,27 @@ private fun parseDaysFromLabel(expiryLabel: String?): Int? {
     return Regex("(\\d+)").find(label)?.groupValues?.getOrNull(1)?.toIntOrNull()
 }
 
-internal fun pantryFoodRecordToUi(record: PantryFoodRecord): PantryFoodUi {
-    val quantityLabel = if (record.quantity.isNotBlank()) {
-        record.quantity
+internal fun PantryFood.toPantryFoodUi(): PantryFoodUi {
+    val quantityLabel = if (quantity.isNotBlank()) {
+        quantity
     } else {
-        listOf(record.quantityValue, record.quantityUnit).filter { it.isNotBlank() }.joinToString(" ")
+        listOf(quantityValue, quantityUnit).filter { it.isNotBlank() }.joinToString(" ")
     }
     return PantryFoodUi(
-        id = record.id,
-        name = record.name,
+        id = id,
+        name = name,
         quantity = quantityLabel,
-        category = record.category,
-        location = when (record.locationKey) {
+        category = category,
+        location = when (locationKey) {
             "fridge" -> PantryLocation.FRIDGE
             "freezer" -> PantryLocation.FREEZER
             else -> PantryLocation.PANTRY
         },
-        expiryLabel = record.expiryLabel,
-        expiryDateIso = record.expiryDateIso,
-        addedDateIso = record.addedDateIso,
-        iconKey = record.iconKey,
-        iconRes = pantryIconResource(record.iconKey),
+        expiryLabel = expiryLabel,
+        expiryDateIso = expiryDateIso,
+        addedDateIso = addedDateIso,
+        iconKey = iconKey,
+        iconRes = pantryIconResource(iconKey),
     )
 }
 

@@ -1,100 +1,97 @@
-# KMP Architecture Skill
+---
+name: kmp-architecture
+description: Review or evolve NeveraChef AI Android/Kotlin/KMP architecture. Use when checking feature-layered MVVM compliance, package boundaries, presentation-domain-data direction, Compose file scalability, ViewModel/state/event placement, repository/use case placement, platform leaks, or whether a feature should be split into smaller files.
+---
 
-Use this skill when creating, reviewing or evolving architecture in NeveraChef AI.
+# KMP Architecture
 
-## Use For
+Use this skill for architecture reviews and architecture-sensitive changes in NeveraChef AI.
 
-- KMP source-set boundary decisions
-- feature package structure
-- state/event/effect architecture
-- domain/repository/use case placement
-- platform-specific implementation placement
+## Load Order
 
-Do not use for visual-only, Gradle-only or GitHub-only tasks.
+1. Inspect the direct feature/package involved.
+2. Open `ai/context/architecture.md` only when architecture rules are needed.
+3. Open `ai/context/product.md` only when product semantics are touched.
+4. Open `ai/rules/validation-android.md` only when choosing validation.
 
-## Sources
+Do not scan the whole repository by default.
 
-| Source | Use |
-|---|---|
-| Repository code | Final authority for current conventions |
-| `AGENTS.md` | Root agent rules |
-| `ai/context/architecture.md` | Architecture ownership and dependency direction |
-| `ai/context/product.md` | Product invariants when behaviour is touched |
-| `ai/rules/validation-android.md` | Validation command selection |
+## Target Architecture
 
-## Baseline
-
-| Layer | Responsibility |
-|---|---|
-| `app/` | Composition root, theme and navigation setup |
-| `feature/*` | Screen UI, route wiring, state, events, effects and presentation logic |
-| `domain/*` | Pure models, use cases and repository contracts when useful |
-| `core/ui` / `core/designsystem` | Shared UI primitives, theme and design tokens |
-| `core/persistence` / `core/preferences` | Local-first storage and settings behind APIs |
-| Platform source sets | Android/iOS implementations only |
-
-## Feature Shape
-
-Use only when it improves clarity:
+Default direction:
 
 ```text
-feature/<featureName>/
-├── <FeatureName>Route.kt
-├── <FeatureName>Screen.kt
-├── <FeatureName>State.kt
-├── <FeatureName>Event.kt
-├── <FeatureName>Effect.kt        Optional
-└── <FeatureName>ViewModel.kt     Only when needed
+presentation -> domain <- data
 ```
 
-Do not create architecture files just for symmetry.
+Existing features may still use `ui/`; treat `ui/` as `presentation`. Do not create both names inside the same feature unless explicitly migrating.
 
-## Rules
+MVVM flow:
 
-- Screens render immutable state and emit events.
-- State holders/ViewModels own UI logic when complexity requires it.
-- Domain stays pure Kotlin and platform independent.
-- Use cases are for real business behaviour, validation or orchestration.
-- Repository contracts hide persistence/preferences/network/provider details.
-- Common code must not depend on Android `Context`, `Application`, Activity, Fragment, UIKit or Swift-only types.
-- Platform access from shared code requires a shared contract plus platform implementation.
-- Keep feature internals private to that feature.
+```text
+Screen -> Event -> ViewModel/StateHolder -> UseCase -> Repository contract <- Repository implementation <- Data source
+Screen <- UiState <- ViewModel/StateHolder
+```
+
+## Layer Rules
+
+- `presentation` / `ui`: screens, composables, ViewModels/state holders, UI state, events and effects.
+- `domain`: pure Kotlin models, validation, useful use cases and repository contracts.
+- `data`: repository implementations, datasources, DTOs and mappers.
+- `app`: composition root, app state and navigation wiring.
+- `core/designsystem`: tokens, theme and design primitives.
+- `core/ui`: genuinely reusable UI components only.
+- `core/persistence` and `core/preferences`: storage APIs and implementations behind contracts.
 
 ## Forbidden
 
 ```text
+presentation/ui -> data
+data -> presentation/ui
+domain -> Compose
+domain -> Android/iOS framework APIs
 Screen -> persistence/preferences/AI provider directly
-Domain -> Compose
-Domain -> Android/iOS APIs
 Feature A -> Feature B internals
 shared/commonMain -> android.* / UIKit / Swift-only APIs
 ```
 
-## Checklist
+## Compose Scalability
 
-Before editing:
+- Aim for files under 400-500 lines.
+- Split large screens by responsibility:
+  - `sections/` for major screen areas.
+  - `components/` for repeated or reusable UI pieces.
+  - `model/` or state files for UI models when needed.
+- Keep Composables render-focused: state in, events out.
+- Move formatting and mapping out of large composables when it grows.
+- Keep preview/sample data separate from production state.
+- Move to `core/ui` only after real reuse across features.
 
-1. Inspect the closest existing feature/package.
-2. Inspect related state, events, route and screen files.
-3. Inspect domain/persistence/platform code only if involved.
-4. Make the smallest architecture change that preserves current conventions.
+## Review Checklist
 
-Before finishing:
+Before editing or reporting:
 
-1. Check for platform leaks.
-2. Check business logic is outside Composables.
-3. Check UI state is immutable and render-ready.
-4. Validate using `ai/rules/validation-android.md`.
+1. Identify the feature and current package shape.
+2. Check dependency direction against `presentation -> domain <- data`.
+3. Check ViewModel/state/event ownership.
+4. Check Composables do not own persistence, provider calls or business rules.
+5. Check file size and split candidates.
+6. Check platform APIs stay out of `shared/commonMain`.
+7. Check validation command from `ai/rules/validation-android.md` if code changed.
 
 ## Output
 
+For reviews, report only findings that matter:
+
 ```text
-Files changed:
+Findings:
+- severity - file - issue
+
+Suggested changes:
 - ...
 
 Validation:
-- ...
-
-Notes:
-- ...
+- command or Not run
 ```
+
+For implementations, use the repo final format from `AGENTS.md`.
