@@ -1,7 +1,7 @@
 # NeveraChef AI - Architecture Context
 
-> **Version:** 2026-05-26  
-> **Scope:** Architecture, ownership and dependency direction for NeveraChef AI.
+> **Version:** 2026-06-01
+> **Scope:** Architecture, ownership and dependency direction.
 
 Use this file only when a task needs architecture context. Use `AGENTS.md` for root execution rules.
 
@@ -35,11 +35,10 @@ Feature-specific direction:
 | File | Purpose |
 |---|---|
 | `AGENTS.md` | Root agent rules |
-| `ai/PRODUCT_CONTEXT.md` | Product scope and product invariants |
-| `ai/VALIDATION_ANDROID.md` | Android/KMP validation |
-| `ai/WORKFLOW_FEATURE.md` | Active feature progress |
-| `ai/architecture/ARCH-01-kmp-feature-layered-mvvm.md` | Feature-layered architecture baseline |
-| `ai/skills/*/SKILL.md` | Task-specific execution rules |
+| `ai/context/product.md` | Product scope and product invariants |
+| `ai/rules/validation-android.md` | Android/KMP validation |
+| `ai/rules/workflow.md` | Feature workflow |
+| `ai/skills/README.md` | Task-specific execution rules |
 
 ## Source Ownership
 
@@ -228,4 +227,4 @@ Before finishing:
 2. Check business logic is not inside Composables.
 3. Check persistence/preferences/AI providers are not called directly from Screens.
 4. Check UI state is immutable.
-5. Validate using `ai/VALIDATION_ANDROID.md`.
+5. Validate using `ai/rules/validation-android.md`.

@@ -18,9 +18,9 @@ Do not use for visual-only, Gradle-only or GitHub-only tasks.
 |---|---|
 | Repository code | Final authority for current conventions |
 | `AGENTS.md` | Root agent rules |
-| `ai/ARCHITECTURE_CONTEXT.md` | Architecture ownership and dependency direction |
-| `ai/PRODUCT_CONTEXT.md` | Product invariants when behaviour is touched |
-| `ai/VALIDATION_ANDROID.md` | Validation command selection |
+| `ai/context/architecture.md` | Architecture ownership and dependency direction |
+| `ai/context/product.md` | Product invariants when behaviour is touched |
+| `ai/rules/validation-android.md` | Validation command selection |
 
 ## Baseline
 
@@ -84,7 +84,7 @@ Before finishing:
 1. Check for platform leaks.
 2. Check business logic is outside Composables.
 3. Check UI state is immutable and render-ready.
-4. Validate using `ai/VALIDATION_ANDROID.md`.
+4. Validate using `ai/rules/validation-android.md`.
 
 ## Output
 

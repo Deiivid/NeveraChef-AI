@@ -13,6 +13,7 @@ fun PantryFoodRecord.toDomain(): PantryFood = PantryFood(
     locationKey = locationKey,
     expiryLabel = expiryLabel,
     expiryDateIso = expiryDateIso,
+    addedDateIso = addedDateIso,
     iconKey = iconKey,
 )
 
@@ -26,5 +27,6 @@ fun PantryFood.toRecord(): PantryFoodRecord = PantryFoodRecord(
     locationKey = locationKey,
     expiryLabel = expiryLabel,
     expiryDateIso = expiryDateIso,
+    addedDateIso = addedDateIso,
     iconKey = iconKey,
 )

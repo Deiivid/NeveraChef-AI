@@ -6,7 +6,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.dp
 import es.neverachefai.core.persistence.LocalAppContentStore
 import es.neverachefai.core.persistence.ShoppingItemRecord
 import es.neverachefai.core.preferences.AppPreferences
@@ -20,13 +19,13 @@ import es.neverachefai.feature.onboarding.ui.OnboardingScreen
 import es.neverachefai.feature.pantry.ui.AddIngredientsScreen
 import es.neverachefai.feature.pantry.ui.FoodDetailScreen
 import es.neverachefai.feature.pantry.ui.IngredientReviewScreen
+import es.neverachefai.feature.pantry.ui.PantryLocation
 import es.neverachefai.feature.pantry.ui.PantryFoodUi
 import es.neverachefai.feature.pantry.ui.PantryScreen
 import es.neverachefai.feature.pantry.ui.pantryFoodRecordToUi
 import es.neverachefai.feature.recipes.ui.RecipeDetailScreen
 import es.neverachefai.feature.recipes.ui.RecipeGenerationScreen
 import es.neverachefai.feature.recipes.ui.RecipeResultsScreen
-import es.neverachefai.feature.settings.ui.SettingsScreen
 import es.neverachefai.feature.shopping.ui.AddShoppingProductScreen
 import es.neverachefai.feature.shopping.ui.AddShoppingProductUiState
 import es.neverachefai.feature.shopping.ui.ShoppingListScreen
@@ -74,7 +73,8 @@ fun NeveraChefApp(
         RootFlow.MAIN -> NeveraMainScaffold(
             selectedTab = currentTab,
             onTabSelected = { currentTab = it },
-            showBottomBar = !(currentTab == MainTab.SHOPPING && showAddShoppingProduct),
+            showBottomBar = !(currentTab == MainTab.SHOPPING && showAddShoppingProduct) &&
+                !(currentTab == MainTab.PANTRY && pantryFlow == PantryFlow.DETAIL),
             contentHorizontalPadding = if (currentTab == MainTab.SHOPPING && showAddShoppingProduct) 0.dp else 12.dp,
             contentVerticalPadding = if (currentTab == MainTab.SHOPPING && showAddShoppingProduct) 0.dp else 8.dp,
             content = {
@@ -106,30 +106,26 @@ fun NeveraChefApp(
                         PantryFlow.DETAIL -> FoodDetailScreen(
                             food = selectedFood,
                             onBack = { pantryFlow = PantryFlow.LIST },
-                            onSaveEditedFood = { updated ->
-                                selectedFood = updated
+                            onSaveEditedFood = { updatedFood ->
                                 val current = LocalAppContentStore.loadPantryFoods().toMutableList()
-                                val index = current.indexOfFirst { it.id == updated.id }
+                                val index = current.indexOfFirst { it.id == updatedFood.id }
                                 if (index >= 0) {
-                                    val existing = current[index]
-                                    current[index] = existing.copy(
-                                        name = updated.name,
-                                        quantity = updated.quantity,
-                                        category = updated.category,
-                                        locationKey = when (updated.location) {
-                                            es.neverachefai.feature.pantry.ui.PantryLocation.FRIDGE -> "fridge"
-                                            es.neverachefai.feature.pantry.ui.PantryLocation.PANTRY -> "pantry"
-                                            es.neverachefai.feature.pantry.ui.PantryLocation.FREEZER -> "freezer"
-                                        },
-                                        expiryDateIso = updated.expiryDateIso,
+                                    current[index] = current[index].copy(
+                                        name = updatedFood.name.trim().ifBlank { current[index].name },
+                                        quantity = updatedFood.quantity,
+                                        quantityValue = parseDetailQuantityValue(updatedFood.quantity),
+                                        quantityUnit = parseDetailQuantityUnit(updatedFood.quantity),
+                                        category = updatedFood.category,
+                                        locationKey = updatedFood.location.toLocationKey(),
+                                        expiryLabel = current[index].expiryLabel,
+                                        expiryDateIso = updatedFood.expiryDateIso,
+                                        addedDateIso = updatedFood.addedDateIso,
+                                        iconKey = updatedFood.iconKey,
                                     )
                                     LocalAppContentStore.savePantryFoods(current)
                                     pantryFoods = current.map(::pantryFoodRecordToUi)
+                                    selectedFood = pantryFoods.firstOrNull { it.id == updatedFood.id } ?: updatedFood
                                 }
-                            },
-                            onGenerateRecipe = {
-                                currentTab = MainTab.RECIPES
-                                recipesFlow = RecipesFlow.GENERATE
                             },
                         )
                     }
@@ -203,11 +199,14 @@ fun NeveraChefApp(
                                 showAddShoppingProduct = false
                             },
                         )
-                    } else {
-                        ShoppingListScreen(
-                            onAddProductClick = { showAddShoppingProduct = true },
-                        )
-                    }
+                        } else {
+                            ShoppingListScreen(
+                                onAddProductClick = { showAddShoppingProduct = true },
+                                onFinalizePurchase = {
+                                    pantryFoods = LocalAppContentStore.loadPantryFoods().map(::pantryFoodRecordToUi)
+                                },
+                            )
+                        }
                     MainTab.SETTINGS -> SettingsScreen(
                         cameraPermissionGranted = cameraPermissionGranted,
                         microphonePermissionGranted = microphonePermissionGranted,
@@ -219,6 +218,17 @@ fun NeveraChefApp(
             },
         )
     }
+}
+
+@Composable
+fun SettingsScreen(
+    cameraPermissionGranted: Boolean,
+    microphonePermissionGranted: Boolean,
+    onRequestCameraPermission: () -> Unit,
+    onRequestMicrophonePermission: () -> Unit,
+    onReset: () -> Unit
+) {
+    TODO("Not yet implemented")
 }
 
 private fun String.toCategoryIconKey(): String {
@@ -259,6 +269,32 @@ private fun String.toDestinationKey(): String {
         "congelador" -> "freezer"
         "nevera" -> "fridge"
         else -> "pantry"
+    }
+}
+
+private fun PantryLocation.toLocationKey(): String {
+    return when (this) {
+        PantryLocation.FRIDGE -> "fridge"
+        PantryLocation.PANTRY -> "pantry"
+        PantryLocation.FREEZER -> "freezer"
+    }
+}
+
+private fun parseDetailQuantityValue(quantity: String): String {
+    val match = Regex("""(\d+(?:[.,]\d+)?)""").find(quantity.trim()) ?: return "1"
+    return match.groupValues[1]
+}
+
+private fun parseDetailQuantityUnit(quantity: String): String {
+    val normalized = quantity.trim().lowercase()
+    return when {
+        normalized.contains("kg") -> "kg"
+        normalized.contains("gr") || normalized.contains("gram") || Regex("""\b(g)\b""").containsMatchIn(normalized) -> "gr"
+        normalized.contains("unidad") -> "unidades"
+        else -> {
+            val parts = normalized.split(" ").filter { it.isNotBlank() }
+            if (parts.size >= 2) parts.drop(1).joinToString(" ") else "unidades"
+        }
     }
 }
 

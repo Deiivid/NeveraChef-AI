@@ -101,6 +101,7 @@ data class PantryFoodUi(
     val location: PantryLocation,
     val expiryLabel: String?,
     val expiryDateIso: String?,
+    val addedDateIso: String?,
     val iconKey: String,
     val iconRes: DrawableResource,
 )
@@ -645,6 +646,7 @@ internal fun pantryFoodRecordToUi(record: PantryFoodRecord): PantryFoodUi {
         },
         expiryLabel = record.expiryLabel,
         expiryDateIso = record.expiryDateIso,
+        addedDateIso = record.addedDateIso,
         iconKey = record.iconKey,
         iconRes = pantryIconResource(record.iconKey),
     )

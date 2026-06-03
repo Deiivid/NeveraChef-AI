@@ -53,10 +53,14 @@ fun expirationPriority(
 }
 
 fun loadExpiryReminderDays(defaultDays: Int = 2): Int {
-    return AppPreferences.getString(KEY_EXPIRY_REMINDER_DAYS)
-        ?.toIntOrNull()
-        ?.coerceIn(2, 5)
-        ?: defaultDays
+    return clampExpiryReminderDays(
+        AppPreferences.getString(KEY_EXPIRY_REMINDER_DAYS)?.toIntOrNull(),
+        defaultDays,
+    )
+}
+
+internal fun clampExpiryReminderDays(value: Int?, defaultDays: Int = 2): Int {
+    return value?.coerceIn(2, 6) ?: defaultDays.coerceIn(2, 6)
 }
 
 fun parseIsoDate(value: String?): SimpleDate? {

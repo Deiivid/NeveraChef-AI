@@ -1,6 +1,6 @@
 # NeveraChef AI - Android Validation
 
-> **Version:** 2026-05-26  
+> **Version:** 2026-06-01
 > **Scope:** Android/KMP build, test, lint and visual validation.
 
 Use this file when a task changes Android code, shared KMP code used by Android, Compose UI, Gradle, tests, lint or Detekt.

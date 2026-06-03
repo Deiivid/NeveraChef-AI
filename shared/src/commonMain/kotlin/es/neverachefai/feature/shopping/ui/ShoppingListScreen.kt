@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import es.neverachefai.feature.pantry.data.PantryRepositoryImpl
 import es.neverachefai.feature.pantry.domain.model.PantryFood
+import es.neverachefai.feature.pantry.ui.platformTodayIsoDate
 import es.neverachefai.feature.shopping.data.ShoppingRepositoryImpl
 import es.neverachefai.feature.shopping.domain.model.ShoppingListItem
 import neverachefai.shared.generated.resources.Res
@@ -112,6 +113,7 @@ private data class ShoppingListItemUi(
 @Composable
 fun ShoppingListScreen(
     onAddProductClick: () -> Unit = {},
+    onFinalizePurchase: () -> Unit = {},
 ) {
     val shoppingRepository = remember { ShoppingRepositoryImpl() }
     val pantryRepository = remember { PantryRepositoryImpl() }
@@ -269,7 +271,10 @@ fun ShoppingListScreen(
                             .clip(RoundedCornerShape(18.dp))
                             .background(Color(0xFFE9F7EF))
                             .border(1.dp, Color(0xFF0A7A4B), RoundedCornerShape(18.dp))
-                            .clickable { finalizeCheckedItems(items, shoppingRepository, pantryRepository) }
+                            .clickable {
+                                finalizeCheckedItems(items, shoppingRepository, pantryRepository)
+                                onFinalizePurchase()
+                            }
                             .padding(vertical = 14.dp),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -643,6 +648,7 @@ private fun moveItemToPantry(item: ShoppingListItemUi, pantryRepository: PantryR
         locationKey = destination,
         expiryLabel = null,
         expiryDateIso = null,
+        addedDateIso = platformTodayIsoDate(),
         iconKey = item.iconKey,
     )
     pantryRepository.saveFoods(pantryFoods)

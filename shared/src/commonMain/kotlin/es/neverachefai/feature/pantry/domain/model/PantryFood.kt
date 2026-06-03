@@ -10,5 +10,6 @@ data class PantryFood(
     val locationKey: String,
     val expiryLabel: String?,
     val expiryDateIso: String? = null,
+    val addedDateIso: String? = null,
     val iconKey: String,
 )
