@@ -29,9 +29,9 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,19 +42,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import es.neverachefai.core.designsystem.NeveraChefColors
-import es.neverachefai.core.preferences.AppPreferences
-import es.neverachefai.feature.pantry.ui.loadExpiryReminderDays
-import es.neverachefai.feature.pantry.ui.KEY_EXPIRY_REMINDER_DAYS
 
 @Composable
 fun SettingsScreen(
     cameraPermissionGranted: Boolean,
     microphonePermissionGranted: Boolean,
+    expiryReminderDays: Int,
+    onExpiryReminderDaysChange: (Int) -> Unit,
     onRequestCameraPermission: () -> Unit,
     onRequestMicrophonePermission: () -> Unit,
     onReset: () -> Unit,
 ) {
-    var expiryReminderDays by remember { mutableStateOf(loadExpiryReminderDays()) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
     Column(
@@ -96,10 +94,7 @@ fun SettingsScreen(
             SettingsSection(title = "Avisos de caducidad") {
                 ReminderCard(
                     selectedDays = expiryReminderDays,
-                    onDaysSelected = {
-                        expiryReminderDays = it
-                        AppPreferences.setString(KEY_EXPIRY_REMINDER_DAYS, it.toString())
-                    },
+                    onDaysSelected = onExpiryReminderDaysChange,
                 )
             }
 

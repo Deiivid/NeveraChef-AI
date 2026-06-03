@@ -26,13 +26,13 @@ Also identify the target Kotlin file before editing.
 ## Workflow
 
 1. Read `AGENTS.md`.
-2. Read `ai/ARCHITECTURE_CONTEXT.md` if structure/state boundaries are involved.
-3. Read `ai/PRODUCT_CONTEXT.md` if product behaviour or terminology is involved.
+2. Read `ai/context/architecture.md` if structure/state boundaries are involved.
+3. Read `ai/context/product.md` if product behaviour or terminology is involved.
 4. Inspect the target screen and nearby screens in the same feature.
 5. Inspect existing design system/components only as needed.
 6. Translate layout intent into Compose.
 7. Edit only required files.
-8. Validate using `ai/VALIDATION_ANDROID.md`.
+8. Validate using `ai/rules/validation-android.md`.
 
 ## HTML To Compose
 

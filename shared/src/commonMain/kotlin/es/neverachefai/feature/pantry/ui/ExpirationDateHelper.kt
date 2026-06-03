@@ -1,7 +1,5 @@
 package es.neverachefai.feature.pantry.ui
 
-import es.neverachefai.core.preferences.AppPreferences
-
 enum class ExpirationPriority {
     EXPIRED,
     SOON,
@@ -10,8 +8,6 @@ enum class ExpirationPriority {
 }
 
 data class SimpleDate(val year: Int, val month: Int, val day: Int)
-
-const val KEY_EXPIRY_REMINDER_DAYS = "settings.expiry_reminder_days"
 
 fun getExpirationText(
     expiryDateIso: String?,
@@ -52,11 +48,8 @@ fun expirationPriority(
     }
 }
 
-fun loadExpiryReminderDays(defaultDays: Int = 2): Int {
-    return AppPreferences.getString(KEY_EXPIRY_REMINDER_DAYS)
-        ?.toIntOrNull()
-        ?.coerceIn(2, 5)
-        ?: defaultDays
+internal fun clampExpiryReminderDays(value: Int?, defaultDays: Int = 2): Int {
+    return value?.coerceIn(2, 6) ?: defaultDays.coerceIn(2, 6)
 }
 
 fun parseIsoDate(value: String?): SimpleDate? {

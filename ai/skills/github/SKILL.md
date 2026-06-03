@@ -44,7 +44,7 @@ Examples:
 
 Before opening a PR:
 
-1. Run the most specific validation command from `ai/VALIDATION_ANDROID.md`.
+1. Run the most specific validation command from `ai/rules/validation-android.md`.
 2. Stop if validation fails unless the user explicitly asks to continue.
 3. Do not invent validation results.
 

@@ -1,6 +1,6 @@
 # NeveraChef AI - Product Context
 
-> **Version:** 2026-05-26  
+> **Version:** 2026-06-01
 > **Scope:** Product/domain rules agents must preserve.
 
 Use this file when a task touches product behaviour, terminology, screens or data semantics. It is not an architecture guide.

@@ -6,8 +6,8 @@ Use this prompt to convert a Stitch, Pencil, Figma, HTML or screenshot design in
 
 ```text
 Use AGENTS.md, ai/skills/screen-migration/SKILL.md and ai/rules/SCREEN_MIGRATION_RULES.md.
-Use ai/PRODUCT_CONTEXT.md if the screen touches inventory, shopping, products, amount, weight, location or finalization.
-Use ai/VALIDATION_ANDROID.md to choose validation.
+Use ai/context/product.md if the screen touches inventory, shopping, products, amount, weight, location or finalization.
+Use ai/rules/validation-android.md to choose validation.
 
 Task:
 Implement the attached screen in Kotlin Multiplatform Compose.
@@ -39,11 +39,11 @@ Rules:
 - Do not use Android/iOS framework APIs in shared/commonMain.
 - Use shared resources (`Res.*`) in common code; do not use platform `R.*`.
 - Preserve callbacks, state, public signatures and navigation.
-- Preserve product semantics from ai/PRODUCT_CONTEXT.md when relevant.
+- Preserve product semantics from ai/context/product.md when relevant.
 - Do not trigger one-off actions from recomposition.
 - Use lifecycle-aware effect collection when effects are needed.
 - Translate HTML/CSS intent into Compose.
-- Run the smallest useful Gradle validation from ai/VALIDATION_ANDROID.md after editing, or report why it was not run.
+- Run the smallest useful Gradle validation from ai/rules/validation-android.md after editing, or report why it was not run.
 - If emulator/screenshot tools are available, capture and compare the result.
 
 Acceptance:

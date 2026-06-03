@@ -2,7 +2,7 @@ package es.neverachefai.core.persistence
 
 import es.neverachefai.core.preferences.AppPreferences
 
-private const val STORAGE_VERSION = "v3"
+private const val STORAGE_VERSION = "v4"
 private const val FIELD_SEPARATOR = '#'
 private const val PANTRY_FOODS_KEY = "local_pantry_foods"
 private const val SHOPPING_ITEMS_KEY = "local_shopping_items"
@@ -17,6 +17,7 @@ data class PantryFoodRecord(
     val locationKey: String,
     val expiryLabel: String?,
     val expiryDateIso: String? = null,
+    val addedDateIso: String? = null,
     val iconKey: String,
 )
 
@@ -64,11 +65,11 @@ object LocalAppContentStore {
     }
 
     private fun defaultPantryFoods(): List<PantryFoodRecord> = listOf(
-        PantryFoodRecord("1", "Espinacas", "1 bolsa", "1", "bolsa", "Verdura", "fridge", "Caduca en 2 días", null, "spinach"),
-        PantryFoodRecord("2", "Huevos", "6 uds", "6", "uds", "Proteína", "fridge", "Quedan 10 días", null, "eggs"),
-        PantryFoodRecord("3", "Arroz integral", "1 kg", "1", "kg", "Cereal", "pantry", "Perenne", null, "rice"),
-        PantryFoodRecord("4", "Lentejas", "500 g", "500", "g", "Legumbre", "pantry", "Perenne", null, "lentils"),
-        PantryFoodRecord("5", "Filetes de pescado", "2 uds", "2", "uds", "Proteína", "freezer", "Quedan 3 meses", null, "fish"),
+        PantryFoodRecord("1", "Espinacas", "1 bolsa", "1", "bolsa", "Verdura", "fridge", "Caduca en 2 días", null, null, "spinach"),
+        PantryFoodRecord("2", "Huevos", "6 uds", "6", "uds", "Proteína", "fridge", "Quedan 10 días", null, null, "eggs"),
+        PantryFoodRecord("3", "Arroz integral", "1 kg", "1", "kg", "Cereal", "pantry", "Perenne", null, null, "rice"),
+        PantryFoodRecord("4", "Lentejas", "500 g", "500", "g", "Legumbre", "pantry", "Perenne", null, null, "lentils"),
+        PantryFoodRecord("5", "Filetes de pescado", "2 uds", "2", "uds", "Proteína", "freezer", "Quedan 3 meses", null, null, "fish"),
     )
 
     private fun defaultShoppingItems(): List<ShoppingItemRecord> = listOf(
@@ -111,6 +112,7 @@ object LocalAppContentStore {
                         food.locationKey,
                         food.expiryLabel.orEmpty(),
                         food.expiryDateIso.orEmpty(),
+                        food.addedDateIso.orEmpty(),
                         food.iconKey,
                     ),
                 )
@@ -144,13 +146,14 @@ object LocalAppContentStore {
         val lines = raw?.split('\n') ?: return null
         val version = lines.firstOrNull() ?: return null
         val expectedFieldCount = when (version) {
-            STORAGE_VERSION -> 10
+            STORAGE_VERSION -> 11
+            "v3" -> 10
             "v2" -> 9
             else -> 7
         }
         val rows = decodeRows(raw, expectedFieldCount) ?: return null
         return rows.map {
-            if (expectedFieldCount == 10) {
+            if (it.size >= 11) {
                 PantryFoodRecord(
                     id = it[0],
                     name = it[1],
@@ -161,9 +164,24 @@ object LocalAppContentStore {
                     locationKey = it[6],
                     expiryLabel = it[7].ifEmpty { null },
                     expiryDateIso = it[8].ifEmpty { null },
+                    addedDateIso = it[9].ifEmpty { null },
+                    iconKey = it[10],
+                )
+            } else if (it.size == 10) {
+                PantryFoodRecord(
+                    id = it[0],
+                    name = it[1],
+                    quantity = it[2],
+                    quantityValue = it[3],
+                    quantityUnit = it[4],
+                    category = it[5],
+                    locationKey = it[6],
+                    expiryLabel = it[7].ifEmpty { null },
+                    expiryDateIso = it[8].ifEmpty { null },
+                    addedDateIso = null,
                     iconKey = it[9],
                 )
-            } else if (expectedFieldCount == 9) {
+            } else if (it.size == 9) {
                 PantryFoodRecord(
                     id = it[0],
                     name = it[1],

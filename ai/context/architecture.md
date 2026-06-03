@@ -1,7 +1,7 @@
 # NeveraChef AI - Architecture Context
 
-> **Version:** 2026-05-26  
-> **Scope:** Architecture, ownership and dependency direction for NeveraChef AI.
+> **Version:** 2026-06-01
+> **Scope:** Architecture, ownership and dependency direction.
 
 Use this file only when a task needs architecture context. Use `AGENTS.md` for root execution rules.
 
@@ -21,7 +21,7 @@ NeveraChef AI is an Android-first Kotlin Multiplatform / Compose Multiplatform a
 | App shape | Android-first KMP / Compose Multiplatform |
 | Shared module | `shared/` owns common product logic and shared Compose when practical |
 | Hosts | `androidApp/` and `iosApp/` own platform host integration |
-| Architecture | Pragmatic Clean Architecture with MVVM/MVI-style state where useful |
+| Architecture | Feature-layered MVVM with pragmatic Clean Architecture |
 | Persistence | Local-first for inventory, pantry, recipes and shopping data when required |
 | AI | Provider/repository abstraction; UI never calls providers directly |
 
@@ -35,11 +35,10 @@ Feature-specific direction:
 | File | Purpose |
 |---|---|
 | `AGENTS.md` | Root agent rules |
-| `ai/PRODUCT_CONTEXT.md` | Product scope and product invariants |
-| `ai/VALIDATION_ANDROID.md` | Android/KMP validation |
-| `ai/WORKFLOW_FEATURE.md` | Active feature progress |
-| `ai/architecture/ARCH-01-kmp-feature-layered-mvvm.md` | Feature-layered architecture baseline |
-| `ai/skills/*/SKILL.md` | Task-specific execution rules |
+| `ai/context/product.md` | Product scope and product invariants |
+| `ai/rules/validation-android.md` | Android/KMP validation |
+| `ai/rules/workflow.md` | Feature workflow |
+| `ai/skills/README.md` | Task-specific execution rules |
 
 ## Source Ownership
 
@@ -58,6 +57,29 @@ Rules:
 - Do not move code to shared only because KMP allows it.
 - Do not import Android/iOS framework APIs from `shared/commonMain`.
 
+## Feature Architecture
+
+Default feature rule:
+
+```text
+presentation -> domain <- data
+```
+
+- `presentation` owns screens, composables, ViewModels/state holders, UI state, UI events and effects.
+- `domain` owns pure models, validation, useful use cases and repository contracts.
+- `data` owns repository implementations, DTOs, mappers and datasources.
+
+Use `ui/` as the package name when the current feature already uses it. Treat `ui/` as `presentation`; do not create both names in the same feature unless a migration is explicitly requested.
+
+MVVM rule:
+
+```text
+Screen -> Event -> ViewModel -> UseCase -> Repository contract <- Repository implementation <- Data source
+Screen <- UiState <- ViewModel
+```
+
+Keep the structure small. Add use cases, effects or extra files only when they solve real complexity.
+
 ## Package Responsibilities
 
 | Package | Responsibility |
@@ -67,11 +89,12 @@ Rules:
 | `core/ui/` | Reusable shared UI components when reuse is real |
 | `core/persistence/` | Local storage APIs and implementations |
 | `core/preferences/` | User settings and preferences storage |
+| `feature/<name>/presentation/` | Preferred name for screens, ViewModels, UI state, events and effects in new features |
 | `feature/<name>/domain/model/` | Feature-owned pure domain models |
 | `feature/<name>/domain/usecase/` | Feature-owned business actions, validation and orchestration |
 | `feature/<name>/domain/<Feature>Repository.kt` | Feature repository contracts |
 | `feature/<name>/data/` | Repository implementations, datasources, DTOs and mappers |
-| `feature/<name>/ui/` | Feature screens, ViewModels, state, events and effects |
+| `feature/<name>/ui/` | Existing presentation package name; keep it when already present |
 | `feature/navigation/` | Shared routes and navigation graph when applicable |
 
 Rules:
@@ -115,16 +138,6 @@ Feature A -> Feature B internals
 shared/commonMain -> android.* / UIKit / Swift-only APIs
 ```
 
-Feature-layered rule:
-
-```text
-ui -> domain <- data
-```
-
-`ui` owns screens, routes, UI state, UI events, one-off effects and ViewModels/state holders.
-`data` owns repository implementations, mappers, DTOs and datasources.
-`domain` is per-feature and owns pure models, use cases, validation and repository contracts.
-
 Local-first persistence must be accessed through feature `data` datasources. Composables and ViewModels must not know the concrete storage technology.
 
 ## Feature Shape
@@ -142,7 +155,7 @@ feature/<featureName>/
 │   ├── <FeatureName>Repository.kt
 │   ├── model/
 │   └── usecase/
-└── ui/
+└── presentation/ or ui/
     ├── <FeatureName>Screen.kt
     ├── <FeatureName>ViewModel.kt
     ├── <FeatureName>State.kt
@@ -161,6 +174,16 @@ Do not create files or layer folders just for symmetry.
 - Collect effects through lifecycle-aware collection where available.
 - Keep persistence, preferences, network and AI provider calls outside Composables.
 - Keep design tokens and primitives in `core/designsystem/`.
+- Keep screens readable and scalable.
+- Aim for files under 400-500 lines.
+- If a screen grows beyond that, split by responsibility:
+  - `components/` for reusable or repeated UI pieces.
+  - `sections/` for large screen areas.
+  - `model/` or state files for UI models when needed.
+- Avoid one composable doing layout, state mutation, formatting and persistence at once.
+- Prefer small private composables before introducing broad shared components.
+- Move components to `core/ui` only after real reuse appears in more than one feature.
+- Keep preview/sample data separate from production state when previews are added.
 
 ## Domain, Persistence And AI
 
@@ -228,4 +251,4 @@ Before finishing:
 2. Check business logic is not inside Composables.
 3. Check persistence/preferences/AI providers are not called directly from Screens.
 4. Check UI state is immutable.
-5. Validate using `ai/VALIDATION_ANDROID.md`.
+5. Validate using `ai/rules/validation-android.md`.

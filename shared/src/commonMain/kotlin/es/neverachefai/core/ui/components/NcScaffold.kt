@@ -67,12 +67,12 @@ fun NeveraBottomNavigation(
     ) {
         Row(
             modifier = Modifier
-                .padding(start = 21.dp, top = 12.dp, end = 21.dp, bottom = 8.dp)
-                .height(62.dp)
-                .background(Color.White, RoundedCornerShape(31.dp))
-                .border(1.dp, NeveraChefColors.Line, RoundedCornerShape(31.dp))
-                .padding(4.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                .padding(start = 18.dp, top = 10.dp, end = 18.dp, bottom = 8.dp)
+                .height(76.dp)
+                .background(Color.White, RoundedCornerShape(38.dp))
+                .border(1.dp, Color(0xFFE5E7E4), RoundedCornerShape(38.dp))
+                .padding(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             MainTab.entries.forEach { tab ->
@@ -98,9 +98,9 @@ private fun BottomTab(
         onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
-            .height(54.dp),
-        shape = RoundedCornerShape(26.dp),
-        color = if (selected) Color(0xFFE7F3E8) else Color.White,
+            .height(64.dp),
+        shape = RoundedCornerShape(28.dp),
+        color = if (selected) Color(0xFFE8F2E6) else Color.White,
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -109,12 +109,12 @@ private fun BottomTab(
             Icon(
                 painter = painterResource(tab.iconRes()),
                 contentDescription = tab.label,
-                tint = if (selected) Color(0xFF007A53) else NeveraChefColors.Muted,
-                modifier = Modifier.size(24.dp),
+                tint = if (selected) Color(0xFF0E5B45) else NeveraChefColors.Muted,
+                modifier = Modifier.size(26.dp),
             )
             Text(
                 text = tab.label,
-                color = if (selected) Color(0xFF007A53) else NeveraChefColors.Muted,
+                color = if (selected) Color(0xFF0E5B45) else NeveraChefColors.Muted,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.SemiBold,
             )

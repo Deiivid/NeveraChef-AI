@@ -52,6 +52,13 @@ class ExpirationDateHelperTest {
     }
 
     @Test
+    fun `clamps reminder days between 2 and 6`() {
+        assertEquals(2, clampExpiryReminderDays(1))
+        assertEquals(4, clampExpiryReminderDays(4))
+        assertEquals(6, clampExpiryReminderDays(9))
+    }
+
+    @Test
     fun `uses warning days threshold for priority`() {
         assertEquals(
             ExpirationPriority.SOON,

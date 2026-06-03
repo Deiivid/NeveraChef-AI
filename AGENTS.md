@@ -1,144 +1,88 @@
 # NeveraChef AI - Agent Instructions
 
-> **Version:** 2026-05-26  
-> **Scope:** Root instructions for NeveraChef AI.  
-> **Mission:** Keep this Android-first KMP / Compose Multiplatform app stable, maintainable and production-oriented.
+## Purpose
 
-## Role
+Keep Codex fast and precise in this Android-first KMP / Compose Multiplatform repo.
 
-Act as a senior Android/Kotlin/KMP Compose engineer with tech-lead judgement.
+## Default Behaviour
 
-- Prefer correctness, readability, testability and predictable delivery.
-- Choose simple, boring, production-grade solutions.
-- Follow the existing architecture before introducing anything new.
-- For this repository, do not send intermediary updates or narrate steps unless you are blocked and need user input.
+- Load the minimum context needed.
+- Do not scan the repository by default.
+- Inspect only files directly related to the task.
+- Do not open `ai/**` docs unless the task needs that specific topic.
+- Do not refactor, redesign architecture, add dependencies or touch unrelated files unless requested.
+- Preserve existing Kotlin, Compose, KMP and navigation patterns.
+- Keep responses short.
+- Validate with the smallest useful command when practical.
 
-## Stack
+## Context Loading
 
-| Area | Decision |
+Start with:
+
+1. User request.
+2. Direct target file or screen.
+3. Direct dependencies only if needed.
+
+Open extra docs only by trigger:
+
+| Trigger | Open |
 |---|---|
-| Language | Kotlin-first. Swift only for minimal iOS host code. |
-| UI | Compose / Compose Multiplatform + Material 3. |
-| Architecture | Pragmatic Clean Architecture with MVVM/MVI-style state. |
-| State | Immutable `UiState`, explicit events, Coroutines, Flow and `StateFlow`. |
-| DI | Constructor injection. No DI framework unless requested or already present. |
-| Data/network | Local-first. Add storage, backend or HTTP frameworks only when requested. |
-| AI | Provider/repository abstraction. UI must not call AI directly. |
-| Quality | Prefer domain/state/mapper tests. Use existing tools only. |
-| Secrets | Never commit or expose secrets. |
+| Repo layout / where to look | `ai/context/repository-map.md` |
+| Architecture, modules, source sets, dependency direction | `ai/context/architecture.md` |
+| Product terms, inventory semantics, shopping behaviour | `ai/context/product.md` |
+| Stack choices, libraries, default tooling | `ai/context/stack.md` |
+| Validation command uncertainty | `ai/rules/validation-android.md` |
+| Git / PR / branch work | `ai/rules/git.md` |
+| Screenshot-to-Compose or screen migration | `ai/skills/screen-migration/SKILL.md` |
+| Compose screen review | `ai/skills/compose-screen-review/SKILL.md` |
+
+Do not open index files such as `ai/context/README.md`, `ai/rules/README.md` or `ai/skills/README.md` unless you need to discover available docs.
 
 ## Repository Map
 
-```text
-NeveraChefAI/
-├── AGENTS.md
-├── README.md
-├── build.gradle.kts
-├── settings.gradle.kts
-├── ai/                         Agent context, validation and skills.
-├── androidApp/                 Android host and Android framework integration.
-├── iosApp/                     iOS host scaffold and Swift/iOS integration.
-└── shared/                     Kotlin Multiplatform shared module.
-```
+- `androidApp/` - Android host and framework integration.
+- `iosApp/` - iOS host.
+- `shared/` - KMP shared code and Compose UI.
+- `shared/src/commonMain/kotlin/es/neverachefai/feature/` - feature code.
+- `shared/src/commonMain/kotlin/es/neverachefai/core/` - shared design system, UI and infrastructure.
+- `ai/context/` - optional background docs.
+- `ai/rules/` - optional workflow and validation rules.
+- `ai/skills/` - optional task-specific workflows.
+- `ai/workflows/` - project decisions and implementation records.
 
-Load deeper context from `ai/ARCHITECTURE_CONTEXT.md` only when needed.
+## Android / Kotlin / KMP
 
-## Operating Rules
-
-- Stay scoped: change only files required by the user request.
-- Make small, reviewable changes. Avoid broad rewrites unless requested.
-- Preserve current KMP, Compose, state, DI and module boundaries.
-- Keep business logic out of Composables; UI renders state and emits events.
+- Keep business logic out of Composables.
 - Keep `shared/commonMain` platform-agnostic.
-- Put Android/iOS framework APIs only in `androidApp/`, `iosApp/`, `shared/androidMain` or `shared/iosMain`.
-- Use `expect/actual` only for real platform differences that need a shared contract.
-- Do not add dependencies, Gradle plugins, frameworks or tools unless explicitly requested and justified.
-- Do not invent product behavior, navigation flows, data contracts or production-looking fake implementations.
-- Do not ignore build, test, lint, detekt, IDE or runtime failures.
-- Never claim validation that was not run.
-- Never print, transform, commit or summarize secrets.
-
-## Decision Rules
-
-- If the task is clear, implement without asking for confirmation.
-- If behavior is ambiguous, choose the smallest safe change that preserves current product behavior.
-- Ask before changes that affect public APIs, persistence, CI/CD, signing, publishing, dependencies, module structure or production behavior.
-- If a requested change conflicts with the architecture, stop and explain the safer alternative before editing.
-- If a data source is unclear, ask. Do not fake production persistence.
-- If platform code is required from shared code, add a shared contract and implement it in the correct source set.
-
-## Context Rules
-
-Load context progressively. Do not scan the whole repository by default.
-
-1. User request.
-2. Existing code directly related to the task.
-3. This `AGENTS.md`.
-4. `ai/ARCHITECTURE_CONTEXT.md` when architecture context is needed.
-5. Relevant files under `ai/rules/` or `ai/skills/`.
-6. Validation docs only when implementing or checking work.
-
-Use task-specific skills only when relevant:
-
-| Task | Skill |
-|---|---|
-| Compose screen review | `ai/skills/compose-screen-review/SKILL.md` |
-| GitHub workflow, PRs or commits | `ai/skills/github/SKILL.md` |
-| KMP architecture | `ai/skills/kmp-architecture/SKILL.md` |
-| Screen migration | `ai/skills/screen-migration/SKILL.md` |
-| Screenshot comparison | `ai/skills/visual-comparision/SKILL.md` |
-
-## Workflow
-
-1. Inspect only the context needed for the task.
-2. Classify the change internally: UI, business logic, data/persistence, architecture, Gradle/build, testing, docs or CI/CD.
-3. Make the smallest correct change.
-4. Add or update tests when the existing project pattern supports it.
-5. Validate with the smallest useful command.
-6. Report changed files, result, validation and risk.
-7. Keep user-facing replies limited to the requested final block.
+- Use existing design tokens and components where practical.
+- Use `expect/actual` only for real platform differences.
+- Do not call persistence, preferences or AI providers directly from screens.
+- Do not introduce new libraries unless explicitly requested.
 
 ## Validation
 
-Use `ai/VALIDATION_ANDROID.md` as the source of truth for Android/KMP validation.
+Use the smallest relevant command:
 
-Prefer the most specific useful command, for example:
+- Android app or shared UI change: `./gradlew :androidApp:assembleDebug`
+- Shared Kotlin/domain change: `./gradlew :shared:compileKotlinAndroid`
+- Documentation-only change: no Gradle command required.
 
-```bash
-./gradlew test
-./gradlew check
-./gradlew lint
-./gradlew detekt
-./gradlew assembleDebug
-./gradlew :androidApp:assembleDebug
-./gradlew :shared:compileKotlinAndroid
-```
+Never claim validation that was not run.
 
-Report the exact command if run. If not run, report `Not run` with a short reason.
+## Final Output
 
-## GitHub And Git
-
-- Do not create commits, branches, PRs, force pushes, history rewrites or branch deletions unless explicitly requested.
-- Do not run destructive Git commands unless explicitly requested.
-- Before GitHub work, use `ai/skills/github/SKILL.md`.
-- Never stage secrets, local caches, build outputs or unrelated files.
-
-## Output
-
-For code changes, keep the final response short:
+Use this compact format:
 
 ```text
 Files:
-- path/to/File.kt
+- path
 
 Done:
-- Short result.
+- result
 
 Check:
-- ./gradlew test / Not run: reason
+- command or Not run
 
 Risk:
-- none / real risk
+- Low / Medium / High
 ```
-
-Use direct, technical, short output. No filler.
