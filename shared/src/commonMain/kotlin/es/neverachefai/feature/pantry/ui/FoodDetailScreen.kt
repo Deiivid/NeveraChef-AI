@@ -27,9 +27,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -38,7 +35,6 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -61,6 +57,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.window.Dialog
 import es.neverachefai.core.designsystem.NeveraChefColors
 import neverachefai.shared.generated.resources.Res
 import neverachefai.shared.generated.resources.ic_detail_quantity
@@ -97,7 +94,6 @@ private data class QuantityPresentation(
 )
 
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
 fun FoodDetailScreen(
     food: PantryFoodUi?,
     onBack: () -> Unit,
@@ -209,7 +205,7 @@ fun FoodDetailScreen(
         )
         AddedCard(
             addedText = addedDateText(previewFood.addedDateIso),
-            onClick = { if (isEditing) dateTarget = DateTarget.ADDED },
+            onClick = if (isEditing) { { dateTarget = DateTarget.ADDED } } else null,
         )
         if (!isEditing) {
             EditButton(
@@ -231,36 +227,26 @@ fun FoodDetailScreen(
     }
 
     if (dateTarget != null) {
-        val initialMillis = when (dateTarget) {
-            DateTarget.EXPIRY -> isoDateToUtcMillis(expiryDateIso) ?: isoDateToUtcMillis(platformTodayIsoDate())
-            DateTarget.ADDED -> isoDateToUtcMillis(addedDateIso) ?: isoDateToUtcMillis(platformTodayIsoDate())
-            null -> isoDateToUtcMillis(platformTodayIsoDate())
-        }
-        val pickerState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
+        val initialDate = when (dateTarget) {
+            DateTarget.EXPIRY -> parseIsoDate(expiryDateIso) ?: parseIsoDate(platformTodayIsoDate())
+            DateTarget.ADDED -> parseIsoDate(addedDateIso) ?: parseIsoDate(platformTodayIsoDate())
+            null -> parseIsoDate(platformTodayIsoDate())
+        } ?: SimpleDate(2026, 1, 1)
 
-        DatePickerDialog(
-            onDismissRequest = { dateTarget = null },
-            confirmButton = {
-                TextButton(onClick = {
-                    val selectedIso = pickerState.selectedDateMillis?.let(::utcMillisToIsoDate)
-                    when (dateTarget) {
-                        DateTarget.EXPIRY -> expiryDateIso = selectedIso
-                        DateTarget.ADDED -> addedDateIso = selectedIso
-                        null -> Unit
-                    }
-                    dateTarget = null
-                }) {
-                    Text("Aceptar")
+        ProductDateDialog(
+            title = if (dateTarget == DateTarget.EXPIRY) "Caducidad" else "Fecha de añadido",
+            initialDate = initialDate,
+            onDismiss = { dateTarget = null },
+            onConfirm = { selectedDate ->
+                val selectedIso = formatToIsoDate(selectedDate)
+                when (dateTarget) {
+                    DateTarget.EXPIRY -> expiryDateIso = selectedIso
+                    DateTarget.ADDED -> addedDateIso = selectedIso
+                    null -> Unit
                 }
+                dateTarget = null
             },
-            dismissButton = {
-                TextButton(onClick = { dateTarget = null }) {
-                    Text("Cancelar")
-                }
-            },
-        ) {
-            DatePicker(state = pickerState)
-        }
+        )
     }
 }
 
@@ -299,6 +285,226 @@ private fun Header(onBack: () -> Unit) {
 }
 
 @Composable
+private fun ProductDateDialog(
+    title: String,
+    initialDate: SimpleDate,
+    onDismiss: () -> Unit,
+    onConfirm: (SimpleDate) -> Unit,
+) {
+    var visibleMonth by remember(initialDate) { mutableStateOf(SimpleDate(initialDate.year, initialDate.month, 1)) }
+    var selectedDate by remember(initialDate) { mutableStateOf(initialDate) }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(28.dp),
+            color = Color.White,
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE6DDC9)),
+        ) {
+            Column(
+                modifier = Modifier.padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .background(Color(0xFFFFE7BE), RoundedCornerShape(16.dp)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            painter = painterResource(Res.drawable.ic_nc_calendar),
+                            contentDescription = null,
+                            tint = Color(0xFFE58A00),
+                            modifier = Modifier.size(21.dp),
+                        )
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = title,
+                            color = Color(0xFFAB6700),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            text = formatDateDialogTitle(selectedDate),
+                            color = Color(0xFF063D29),
+                            fontSize = 24.sp,
+                            lineHeight = 30.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFFF8F4EC), RoundedCornerShape(18.dp))
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = monthTitle(visibleMonth),
+                        color = Color(0xFF4E5662),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.weight(1f),
+                    )
+                    CalendarArrowButton("‹") {
+                        visibleMonth = shiftMonth(visibleMonth, -1)
+                    }
+                    Spacer(modifier = Modifier.width(6.dp))
+                    CalendarArrowButton("›") {
+                        visibleMonth = shiftMonth(visibleMonth, 1)
+                    }
+                }
+
+                CalendarGrid(
+                    visibleMonth = visibleMonth,
+                    selectedDate = selectedDate,
+                    onDateSelected = { selectedDate = it },
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancelar", color = Color(0xFF4E5662), fontWeight = FontWeight.SemiBold)
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Surface(
+                        onClick = { onConfirm(selectedDate) },
+                        shape = RoundedCornerShape(16.dp),
+                        color = Color(0xFF0A5A3A),
+                    ) {
+                        Text(
+                            text = "Aceptar",
+                            color = Color.White,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CalendarArrowButton(
+    label: String,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .size(34.dp)
+            .clip(RoundedCornerShape(17.dp))
+            .background(Color.White)
+            .border(1.dp, Color(0xFFE4DEC9), RoundedCornerShape(17.dp))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            color = Color(0xFF0A5A3A),
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Medium,
+        )
+    }
+}
+
+@Composable
+private fun CalendarGrid(
+    visibleMonth: SimpleDate,
+    selectedDate: SimpleDate,
+    onDateSelected: (SimpleDate) -> Unit,
+) {
+    val weekDays = listOf("L", "M", "X", "J", "V", "S", "D")
+    val firstOffset = firstDayOffsetMonday(visibleMonth.year, visibleMonth.month)
+    val daysInMonth = daysInMonth(visibleMonth.year, visibleMonth.month)
+    val cells = List(firstOffset) { null } + (1..daysInMonth).map { day ->
+        SimpleDate(visibleMonth.year, visibleMonth.month, day)
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(modifier = Modifier.fillMaxWidth()) {
+            weekDays.forEach { label ->
+                Text(
+                    text = label,
+                    color = Color(0xFF8A8F99),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+
+        cells.chunked(7).forEach { week ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                repeat(7) { index ->
+                    val date = week.getOrNull(index)
+                    CalendarDayCell(
+                        date = date,
+                        selected = date == selectedDate,
+                        onDateSelected = onDateSelected,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CalendarDayCell(
+    date: SimpleDate?,
+    selected: Boolean,
+    onDateSelected: (SimpleDate) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val today = parseIsoDate(platformTodayIsoDate())
+    val isToday = date == today
+    Box(
+        modifier = modifier
+            .height(38.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(
+                when {
+                    selected -> Color(0xFF0A5A3A)
+                    isToday -> Color(0xFFEAF3ED)
+                    else -> Color.Transparent
+                },
+            )
+            .then(if (date != null) Modifier.clickable { onDateSelected(date) } else Modifier),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (date != null) {
+            Text(
+                text = date.day.toString(),
+                color = when {
+                    selected -> Color.White
+                    isToday -> Color(0xFF0A5A3A)
+                    else -> Color(0xFF22242A)
+                },
+                fontSize = 15.sp,
+                fontWeight = if (selected || isToday) FontWeight.Bold else FontWeight.Medium,
+            )
+        }
+    }
+}
+
+@Composable
 private fun ProductCard(
     selectedCategory: CategoryOption,
     productName: String,
@@ -313,6 +519,7 @@ private fun ProductCard(
         val heroCardWidth = if (maxWidth < 360.dp) 214.dp else 220.dp
         val heroCardHeight = if (maxWidth < 360.dp) 226.dp else 232.dp
         val selectedTheme = categoryTheme(selectedCategory.iconKey)
+        val readOnlyBorder = Color(0xFFE2DDCF)
         if (!isEditing) {
             Box(
                 modifier = Modifier.fillMaxWidth(),
@@ -324,7 +531,7 @@ private fun ProductCard(
                         .height(heroCardHeight),
                     shape = RoundedCornerShape(30.dp),
                     color = selectedTheme.background,
-                    border = androidx.compose.foundation.BorderStroke(1.5.dp, selectedTheme.tint),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, readOnlyBorder),
                 ) {
                     Column(
                         modifier = Modifier
@@ -341,7 +548,7 @@ private fun ProductCard(
                             Surface(
                                 shape = RoundedCornerShape(18.dp),
                                 color = Color.White,
-                                border = androidx.compose.foundation.BorderStroke(1.dp, selectedTheme.tint.copy(alpha = 0.3f)),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, readOnlyBorder),
                             ) {
                                 Text(
                                 text = selectedCategory.label,
@@ -539,6 +746,13 @@ private fun EditableProductNamePill(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            Icon(
+                painter = painterResource(Res.drawable.ic_nc_pencil),
+                contentDescription = null,
+                tint = Color(0xFF0A5A3A),
+                modifier = Modifier.size(16.dp),
+            )
+            Spacer(modifier = Modifier.width(8.dp))
             BasicTextField(
                 value = value,
                 onValueChange = onValueChange,
@@ -550,7 +764,7 @@ private fun EditableProductNamePill(
                     textAlign = TextAlign.Center,
                 ),
                 cursorBrush = androidx.compose.ui.graphics.SolidColor(Color(0xFF0A5A3A)),
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.weight(1f),
             )
         }
     }
@@ -581,6 +795,61 @@ private fun CarouselArrow(
             fontWeight = FontWeight.Medium,
         )
     }
+}
+
+private fun formatDateDialogTitle(date: SimpleDate): String {
+    return "${date.day} de ${monthName(date.month).lowercase()} de ${date.year}"
+}
+
+private fun monthTitle(date: SimpleDate): String {
+    return "${monthName(date.month)} ${date.year}"
+}
+
+private fun monthName(month: Int): String {
+    return when (month) {
+        1 -> "Enero"
+        2 -> "Febrero"
+        3 -> "Marzo"
+        4 -> "Abril"
+        5 -> "Mayo"
+        6 -> "Junio"
+        7 -> "Julio"
+        8 -> "Agosto"
+        9 -> "Septiembre"
+        10 -> "Octubre"
+        11 -> "Noviembre"
+        12 -> "Diciembre"
+        else -> ""
+    }
+}
+
+private fun shiftMonth(date: SimpleDate, delta: Int): SimpleDate {
+    val zeroBased = date.year * 12 + (date.month - 1) + delta
+    val year = floorDivInt(zeroBased, 12)
+    val month = positiveModulo(zeroBased, 12) + 1
+    return SimpleDate(year, month, 1)
+}
+
+private fun firstDayOffsetMonday(year: Int, month: Int): Int {
+    val epochSunday = SimpleDate(1970, 1, 4)
+    val firstDay = SimpleDate(year, month, 1)
+    val sundayBased = positiveModulo(daysBetween(epochSunday, firstDay), 7)
+    return positiveModulo(sundayBased - 1, 7)
+}
+
+private fun daysInMonth(year: Int, month: Int): Int {
+    return (31 downTo 28).first { day -> isValidDate(year, month, day) }
+}
+
+private fun positiveModulo(value: Int, modulo: Int): Int {
+    val result = value % modulo
+    return if (result < 0) result + modulo else result
+}
+
+private fun floorDivInt(value: Int, divisor: Int): Int {
+    val quotient = value / divisor
+    val remainder = value % divisor
+    return if (remainder != 0 && (remainder > 0) != (divisor > 0)) quotient - 1 else quotient
 }
 
 private fun List<CategoryOption>.previousFrom(current: CategoryOption): CategoryOption {
@@ -920,7 +1189,7 @@ private fun ExpiryCard(
             }
 
             Text(
-                text = badgeText,
+                text = "Cambiar",
                 color = Color(0xFFE38A00),
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -928,6 +1197,12 @@ private fun ExpiryCard(
                     .background(Color(0xFFFFE9C8), RoundedCornerShape(11.dp))
                     .clickable(enabled = onBadgeClick != null, onClick = { onBadgeClick?.invoke() })
                     .padding(horizontal = 7.dp, vertical = 4.dp),
+            )
+            Text(
+                text = "›",
+                color = Color(0xFFE38A00),
+                fontSize = 23.sp,
+                fontWeight = FontWeight.Medium,
             )
         }
     }
@@ -938,12 +1213,13 @@ private fun AddedCard(
     addedText: String,
     onClick: (() -> Unit)? = null,
 ) {
+    val isEditable = onClick != null
     Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = 78.dp)
                 .background(Color.White, RoundedCornerShape(20.dp))
-                .border(1.dp, Color(0xFFE8E8E8), RoundedCornerShape(20.dp))
+                .border(1.dp, if (isEditable) Color(0xFFDDE8DD) else Color(0xFFE8E8E8), RoundedCornerShape(20.dp))
                 .clickable(enabled = onClick != null, onClick = { onClick?.invoke() })
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -978,6 +1254,23 @@ private fun AddedCard(
                 fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold,
                 textAlign = TextAlign.Start,
+            )
+        }
+        if (isEditable) {
+            Text(
+                text = "Cambiar",
+                color = Color(0xFF0A5A3A),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier
+                    .background(Color(0xFFEAF3ED), RoundedCornerShape(11.dp))
+                    .padding(horizontal = 7.dp, vertical = 4.dp),
+            )
+            Text(
+                text = "›",
+                color = Color(0xFF0A5A3A),
+                fontSize = 23.sp,
+                fontWeight = FontWeight.Medium,
             )
         }
     }
