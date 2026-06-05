@@ -49,7 +49,7 @@ fun expirationPriority(
 }
 
 internal fun clampExpiryReminderDays(value: Int?, defaultDays: Int = 2): Int {
-    return value?.coerceIn(2, 6) ?: defaultDays.coerceIn(2, 6)
+    return value?.coerceIn(2, 10) ?: defaultDays.coerceIn(2, 10)
 }
 
 fun parseIsoDate(value: String?): SimpleDate? {

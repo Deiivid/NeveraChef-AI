@@ -56,15 +56,17 @@ class NeveraChefAppState(
 
     fun reset() {
         AppPreferences.clearAll()
+        savePantryFoods(emptyList())
+        saveShoppingItemsUseCase(emptyList())
         rootFlow = RootFlow.ONBOARDING
         currentTab = MainTab.PANTRY
         pantryFlow = PantryFlow.LIST
         selectedFood = null
-        pantryFoods = loadPantryFoodUi()
+        pantryFoods = emptyList()
         recipesFlow = RecipesFlow.GENERATE
         showAddShoppingProduct = false
         addShoppingState = AddShoppingProductUiState()
-        shoppingItems = getShoppingItems()
+        shoppingItems = emptyList()
         expiryReminderDays = loadExpiryReminderDays()
     }
 
@@ -157,7 +159,7 @@ class NeveraChefAppState(
     }
 
     fun updateExpiryReminderDays(days: Int) {
-        val clamped = days.coerceIn(2, 6)
+        val clamped = days.coerceIn(2, 10)
         expiryReminderDays = clamped
         AppPreferences.setString(KEY_EXPIRY_REMINDER_DAYS, clamped.toString())
     }
@@ -167,8 +169,8 @@ class NeveraChefAppState(
     private fun loadExpiryReminderDays(defaultDays: Int = 2): Int {
         return AppPreferences.getString(KEY_EXPIRY_REMINDER_DAYS)
             ?.toIntOrNull()
-            ?.coerceIn(2, 6)
-            ?: defaultDays.coerceIn(2, 6)
+            ?.coerceIn(2, 10)
+            ?: defaultDays.coerceIn(2, 10)
     }
 }
 
