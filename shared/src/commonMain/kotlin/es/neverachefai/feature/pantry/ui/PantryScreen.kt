@@ -279,7 +279,9 @@ private fun HeroHeader(
                 .height(92.dp),
         )
         Column(
-            modifier = Modifier.align(Alignment.BottomStart).padding(bottom = 8.dp),
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(start = 10.dp, bottom = 8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
@@ -301,13 +303,13 @@ private fun HeroHeader(
                 )
                 IconButton(
                     onClick = onDeleteModeToggle,
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(30.dp),
                 ) {
                     Icon(
                         painter = painterResource(Res.drawable.ic_nc_trash),
                         contentDescription = if (deleteMode) "Cancelar borrado" else "Seleccionar para borrar",
                         tint = if (deleteMode) Color(0xFFE03131) else Color(0xFF042D1F),
-                        modifier = Modifier.size(16.dp),
+                        modifier = Modifier.size(20.dp),
                     )
                 }
             }
