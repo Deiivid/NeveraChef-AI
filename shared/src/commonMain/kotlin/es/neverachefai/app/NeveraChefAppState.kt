@@ -156,6 +156,9 @@ class NeveraChefAppState(
             quantityMode = parsed.quantityMode ?: addShoppingState.quantityMode,
             location = parsed.location ?: addShoppingState.location,
         )
+        if (parsed.shouldAdd) {
+            addShoppingProduct()
+        }
     }
 
     fun updateExpiryReminderDays(days: Int) {
@@ -287,6 +290,7 @@ private data class ParsedSpokenShoppingInput(
     val quantity: String? = null,
     val quantityMode: String? = null,
     val location: String? = null,
+    val shouldAdd: Boolean = false,
 )
 
 private fun parseSpokenShoppingInput(rawText: String): ParsedSpokenShoppingInput {
@@ -337,12 +341,23 @@ private fun parseSpokenShoppingInput(rawText: String): ParsedSpokenShoppingInput
     val kgMatch = Regex("(\\d+(?:[\\.,]\\d+)?)\\s*(kg|kilo|kilos|kilogramo|kilogramos)").find(text)
     val grMatch = Regex("(\\d+)\\s*(g|gr|gramo|gramos)").find(text)
     val unitsMatch = Regex("(?:cantidad|cantid|unidades|unidad|uds|ud)\\s*(\\d+)").find(text)
+    val explicitWeightWithUnit = Regex("(?:peso|pesa|pesar)\\s*(\\d+(?:[\\.,]\\d+)?)\\s*(kg|kilo|kilos|kilogramo|kilogramos|g|gr|gramo|gramos)").find(text)
     val explicitWeightValue = Regex("(?:peso|pesa|pesar)\\s*(\\d+(?:[\\.,]\\d+)?)").find(text)
     val explicitQuantityValue = Regex("(?:cantidad|cantid|unidades|unidad|uds|ud)\\s*(\\d+)").find(text)
     val looseNumber = Regex("\\b(\\d+)\\b").find(text)
     val quantityMode: String?
     val quantity: String?
     when {
+        explicitWeightWithUnit != null -> {
+            val numeric = explicitWeightWithUnit.groupValues[1].replace(',', '.').toDoubleOrNull() ?: 0.0
+            val unit = explicitWeightWithUnit.groupValues[2]
+            quantity = if (unit in listOf("kg", "kilo", "kilos", "kilogramo", "kilogramos")) {
+                (numeric * 1000.0).toInt().coerceAtLeast(0).toString()
+            } else {
+                numeric.toInt().coerceAtLeast(0).toString()
+            }
+            quantityMode = "Peso"
+        }
         kgMatch != null -> {
             val kgValue = kgMatch.groupValues[1].replace(',', '.').toDoubleOrNull() ?: 0.0
             quantity = (kgValue * 1000.0).toInt().coerceAtLeast(0).toString()
@@ -384,6 +399,7 @@ private fun parseSpokenShoppingInput(rawText: String): ParsedSpokenShoppingInput
         quantity = quantity,
         quantityMode = quantityMode,
         location = location,
+        shouldAdd = Regex("\\b(añade|anade|añadir|anadir|agrega|meter|mete|guardar|guarda)\\b").containsMatchIn(text),
     )
 }
 
@@ -400,6 +416,7 @@ private fun normalizeVoiceText(value: String): String {
 private fun extractProductNameFromVoice(rawText: String): String? {
     var cleaned = normalizeVoiceText(rawText)
     val dropPatterns = listOf(
+        "\\b(añade|anade|añadir|anadir|agrega|meter|mete|guardar|guarda)\\b",
         "\\b(en\\s+)?(nevera|frigorifico|frigo|refrigerador|despensa|despnesa|congelador)\\b",
         "\\b(frutas?|verduras?|vegetales?|carne|carnes|pescado|pescados|marisco|mariscos)\\b",
         "\\b(peso|cantidad|cantid|unidades?|uds?|ud)\\b",
