@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -20,8 +21,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -37,13 +36,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import es.neverachefai.feature.shopping.domain.model.ShoppingListItem
@@ -83,7 +80,7 @@ import neverachefai.shared.generated.resources.ic_nc_pantry
 import neverachefai.shared.generated.resources.ic_nc_plus
 import neverachefai.shared.generated.resources.ic_nc_shopping_basket
 import neverachefai.shared.generated.resources.ic_nc_trash
-import neverachefai.shared.generated.resources.ref_shopping_hero_list
+import neverachefai.shared.generated.resources.ref_shopping_list_hero_premium
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
@@ -129,6 +126,7 @@ fun ShoppingListScreen(
 
     val addedCount = visibleItems.size
     val markedCount = visibleItems.count { it.checked }
+    val showFinalizePurchase = !selectionMode && visibleItems.any { it.checked }
 
     Box(
         modifier = Modifier
@@ -158,17 +156,18 @@ fun ShoppingListScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .shadow(4.dp, RoundedCornerShape(17.dp), clip = false)
                     .clip(RoundedCornerShape(12.dp))
                     .background(Color(0xFFEEF7F2))
                     .border(1.dp, Color(0xFFD7EBDD), RoundedCornerShape(12.dp))
-                    .padding(horizontal = 10.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    .padding(horizontal = 12.dp, vertical = 11.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(
                     modifier = Modifier
-                        .size(20.dp)
-                        .clip(CircleShape)
+                        .size(38.dp)
+                        .clip(RoundedCornerShape(14.dp))
                         .background(Color(0xFFDCEFE5)),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -176,15 +175,16 @@ fun ShoppingListScreen(
                         painter = painterResource(Res.drawable.ic_nc_check_square),
                         contentDescription = null,
                         tint = Green,
-                        modifier = Modifier.size(12.dp),
+                        modifier = Modifier.size(22.dp),
                     )
                 }
                 Text(
-                    text = "Selecciona los productos que ya tienes en tu cesta y finaliza la compra",
+                    text = "Marca lo que ya tienes en tu cesta y finaliza la compra",
                     color = Ink,
-                    fontSize = 12.sp,
-                    lineHeight = 15.sp,
+                    fontSize = 13.sp,
+                    lineHeight = 17.sp,
                     fontWeight = FontWeight.Medium,
+                    modifier = Modifier.weight(1f),
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
@@ -199,7 +199,7 @@ fun ShoppingListScreen(
                     modifier = Modifier.weight(1f),
                 )
                 MetricChip(
-                    icon = null,
+                    icon = Res.drawable.ic_nc_check_square,
                     text = "$markedCount marcado${if (markedCount == 1) "" else "s"}",
                     modifier = Modifier.weight(1f),
                 )
@@ -211,7 +211,7 @@ fun ShoppingListScreen(
                 .fillMaxSize()
                 .padding(top = listTopPadding),
         ) {
-            item { Spacer(modifier = Modifier.height(10.dp)) }
+            item { Spacer(modifier = Modifier.height(18.dp)) }
 
             if (selectionMode) {
                 item {
@@ -260,53 +260,97 @@ fun ShoppingListScreen(
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
-            if (!selectionMode && visibleItems.any { it.checked }) {
-                item {
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(18.dp))
-                            .background(Color(0xFFE9F7EF))
-                            .border(1.dp, Color(0xFF0A7A4B), RoundedCornerShape(18.dp))
-                            .clickable {
-                                val remaining = onFinalizePurchase(visibleItems.map { it.toDomain() })
-                                visibleItems.clear()
-                                visibleItems.addAll(remaining.map { it.toUi() })
-                            }
-                            .padding(vertical = 14.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = "Finalizar compra",
-                            color = Green,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
-                }
-            }
-
-            item { Spacer(modifier = Modifier.height(120.dp)) }
+            item { Spacer(modifier = Modifier.height(if (showFinalizePurchase) 100.dp else 120.dp)) }
         }
 
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 18.dp, bottom = 22.dp)
-                .size(54.dp)
-                .clip(CircleShape)
-                .background(FabGreen)
-                .clickable(onClick = onAddProductClick),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                painter = painterResource(Res.drawable.ic_nc_plus),
-                contentDescription = "Añadir producto",
-                tint = Color.White,
-                modifier = Modifier.size(26.dp),
+        if (showFinalizePurchase) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .offset(y = 20.dp)
+                    .fillMaxWidth()
+                    .height(62.dp)
+                    .background(Color.White),
+            )
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .offset(y = 20.dp)
+                    .padding(start = 0.dp, end = 0.dp, bottom = 12.dp)
+                    .fillMaxWidth()
+                    .height(54.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                FinalizePurchaseButton(
+                    onClick = {
+                        val remaining = onFinalizePurchase(visibleItems.map { it.toDomain() })
+                        visibleItems.clear()
+                        visibleItems.addAll(remaining.map { it.toUi() })
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(54.dp),
+                )
+                AddProductFab(
+                    onClick = onAddProductClick,
+                    modifier = Modifier.size(58.dp),
+                )
+            }
+        } else {
+            AddProductFab(
+                onClick = onAddProductClick,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .offset(y = 20.dp)
+                    .padding(end = 22.dp, bottom = 12.dp)
+                    .size(54.dp),
             )
         }
+    }
+}
+
+@Composable
+private fun FinalizePurchaseButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(28.dp))
+            .background(Green)
+            .clickable(onClick = onClick)
+            .padding(vertical = 14.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = "Finalizar compra",
+            color = Color.White,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+        )
+    }
+}
+
+@Composable
+private fun AddProductFab(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .shadow(8.dp, CircleShape, clip = false)
+            .clip(CircleShape)
+            .background(FabGreen)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            painter = painterResource(Res.drawable.ic_nc_plus),
+            contentDescription = "Añadir producto",
+            tint = Color.White,
+            modifier = Modifier.size(28.dp),
+        )
     }
 }
 
@@ -325,49 +369,62 @@ private fun ShoppingHeader(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 10.dp)
-                .height(128.dp),
+                .height(158.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.width(166.dp),
                 verticalArrangement = Arrangement.Center,
             ) {
                 Text(
-                    text = "Lista de compra",
+                    text = "Lista de\ncompra",
                     color = Ink,
-                    fontSize = 26.sp,
+                    fontSize = 30.sp,
+                    lineHeight = 32.sp,
                     fontWeight = FontWeight.Bold,
                 )
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     Text(
                         text = "$addedCount añadidos",
                         color = Ink,
-                        fontSize = 17.sp,
-                        lineHeight = 20.sp,
-                        fontWeight = FontWeight.Medium,
+                        fontSize = 18.sp,
+                        lineHeight = 22.sp,
+                        fontWeight = FontWeight.Bold,
                     )
-                    Icon(
-                        painter = painterResource(Res.drawable.ic_nc_trash),
-                        contentDescription = if (deleteMode) "Cancelar borrado" else "Seleccionar para borrar",
-                        tint = if (deleteMode) Color(0xFFE03131) else Color(0xFF042D1F),
+                    Box(
                         modifier = Modifier
-                            .size(16.dp)
+                            .size(42.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (deleteMode) Color(0xFFFFE2E2) else Color(0xFFFFF5F2))
+                            .border(
+                                1.dp,
+                                if (deleteMode) Color(0xFFFFB8B8) else Color(0xFFF1DCD5),
+                                RoundedCornerShape(10.dp),
+                            )
                             .clickable(onClick = onDeleteClick),
-                    )
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            painter = painterResource(Res.drawable.ic_nc_trash),
+                            contentDescription = if (deleteMode) "Cancelar borrado" else "Seleccionar para borrar",
+                            tint = Color(0xFFE82222),
+                            modifier = Modifier.size(23.dp),
+                        )
+                    }
                 }
             }
 
             Image(
-                painter = painterResource(Res.drawable.ref_shopping_hero_list),
+                painter = painterResource(Res.drawable.ref_shopping_list_hero_premium),
                 contentDescription = null,
                 modifier = Modifier
-                    .padding(start = 8.dp)
-                    .size(width = 140.dp, height = 154.dp),
+                    .padding(start = 0.dp)
+                    .size(width = 220.dp, height = 158.dp),
             )
         }
 
@@ -383,10 +440,12 @@ private fun MetricChip(
     Row(
         modifier = modifier
             .height(42.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .border(1.dp, SoftLine, RoundedCornerShape(24.dp))
-            .padding(horizontal = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+            .shadow(3.dp, RoundedCornerShape(21.dp), clip = false)
+            .clip(RoundedCornerShape(21.dp))
+            .background(Color.White)
+            .border(1.dp, Color(0xFFE9DED3), RoundedCornerShape(21.dp))
+            .padding(horizontal = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(9.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) {
@@ -394,15 +453,15 @@ private fun MetricChip(
                 painter = painterResource(icon),
                 contentDescription = null,
                 tint = Ink,
-                modifier = Modifier.size(16.dp),
+                modifier = Modifier.size(20.dp),
             )
         }
         Text(
             text = text,
             color = Ink,
-            fontSize = 13.sp,
-            lineHeight = 16.sp,
-            fontWeight = FontWeight.Medium,
+            fontSize = 14.sp,
+            lineHeight = 17.sp,
+            fontWeight = FontWeight.SemiBold,
         )
     }
 }
@@ -419,9 +478,14 @@ private fun ShoppingListRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .shadow(4.dp, RoundedCornerShape(17.dp), clip = false)
             .clip(RoundedCornerShape(16.dp))
-            .background(if (selectionMode && deleteSelected) Color(0xFFF5FAF5) else if (item.checked) Color(0xFFF5FAF5) else Color.White)
-            .border(1.dp, CardLine, RoundedCornerShape(16.dp))
+            .background(if (item.checked || (selectionMode && deleteSelected)) Color(0xFFF6FBF6) else Color.White)
+            .border(
+                1.dp,
+                if (item.checked || (selectionMode && deleteSelected)) Green.copy(alpha = 0.45f) else CardLine,
+                RoundedCornerShape(16.dp),
+            )
             .combinedClickable(
                 onClick = {
                     if (selectionMode) {
@@ -432,80 +496,78 @@ private fun ShoppingListRow(
                 },
                 onLongClick = onLongSelect,
             )
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(horizontal = 14.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            modifier = Modifier.size(30.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            if (selectionMode) {
-                Checkbox(
-                    checked = deleteSelected,
-                    onCheckedChange = { onDeleteSelectedChange(it) },
-                    colors = CheckboxDefaults.colors(
-                        checkedColor = Color(0xFF0B8E5F),
-                        checkmarkColor = Color.White,
-                        uncheckedColor = Color(0xFF9AA0AE),
-                    ),
-                    modifier = Modifier.size(24.dp),
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(26.dp)
-                        .clip(CircleShape)
-                        .background(if (item.checked) Green else Color.White)
-                        .border(1.dp, if (item.checked) Green else Color(0xFF5A616D), CircleShape),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (item.checked) {
-                        Text(
-                            text = "✓",
-                            color = Color.White,
-                            fontSize = 18.sp,
-                            lineHeight = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
+        PremiumCheckControl(
+            checked = if (selectionMode) deleteSelected else item.checked,
+            danger = selectionMode,
+            onClick = {
+                if (selectionMode) {
+                    onDeleteSelectedChange(!deleteSelected)
+                } else {
+                    onCheckedChange(!item.checked)
                 }
-            }
-        }
+            },
+        )
 
         Spacer(modifier = Modifier.width(10.dp))
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = item.name,
-                color = if (item.checked) Color(0xFF5D8B6E) else Ink,
-                fontSize = 14.sp,
-                lineHeight = 18.sp,
-                fontWeight = FontWeight.SemiBold,
-                textDecoration = if (item.checked) TextDecoration.LineThrough else TextDecoration.None,
+                color = Ink,
+                fontSize = 16.sp,
+                lineHeight = 20.sp,
+                fontWeight = FontWeight.Bold,
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(3.dp))
             Text(
                 text = item.quantity,
-                color = if (item.checked) Color(0xFF5D8B6E) else Muted,
-                fontSize = 11.sp,
-                lineHeight = 14.sp,
-                textDecoration = if (item.checked) TextDecoration.LineThrough else TextDecoration.None,
+                color = Muted,
+                fontSize = 12.sp,
+                lineHeight = 15.sp,
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(3.dp))
             LocationPill(destinationKey = item.destinationKey, checked = item.checked)
         }
 
         Image(
             painter = painterResource(item.iconRes),
             contentDescription = item.name,
-            modifier = Modifier.size(44.dp),
-            alpha = if (item.checked) 0.7f else 1f,
-            colorFilter = if (item.checked) {
-                ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) })
-            } else {
-                null
-            },
+            modifier = Modifier.size(60.dp),
         )
+    }
+}
+
+@Composable
+private fun PremiumCheckControl(
+    checked: Boolean,
+    danger: Boolean,
+    onClick: () -> Unit,
+) {
+    val accent = if (danger) Color(0xFFE03131) else Green
+    val bg = if (checked) accent else Color.White
+    val border = if (checked) accent else Color(0xFFD9E1DB)
+
+    Box(
+        modifier = Modifier
+            .size(38.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(bg)
+            .border(1.5.dp, border, RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (checked) {
+            Text(
+                text = "✓",
+                color = Color.White,
+                fontSize = 22.sp,
+                lineHeight = 22.sp,
+                fontWeight = FontWeight.Bold,
+            )
+        }
     }
 }
 
@@ -527,12 +589,10 @@ private fun LocationPill(destinationKey: String, checked: Boolean = false) {
         "freezer" -> Color(0xFF185CC4)
         else -> Color(0xFFB06B12)
     }
-    val effectiveTint = if (checked) tint.copy(alpha = 0.65f) else tint
-
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(10.dp))
-            .background(effectiveTint.copy(alpha = 0.14f))
+            .background(tint.copy(alpha = 0.14f))
             .padding(horizontal = 8.dp, vertical = 3.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -540,16 +600,15 @@ private fun LocationPill(destinationKey: String, checked: Boolean = false) {
         Icon(
             painter = painterResource(icon),
             contentDescription = label,
-            tint = effectiveTint,
+            tint = tint,
             modifier = Modifier.size(12.dp),
         )
         Text(
             text = label,
-            color = effectiveTint,
+            color = tint,
             fontSize = 10.sp,
             lineHeight = 12.sp,
             fontWeight = FontWeight.Medium,
-            textDecoration = if (checked) TextDecoration.LineThrough else TextDecoration.None,
         )
     }
 }

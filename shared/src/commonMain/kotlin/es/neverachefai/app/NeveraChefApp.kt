@@ -1,15 +1,18 @@
 package es.neverachefai.app
 
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import es.neverachefai.core.ui.components.NeveraMainScaffold
+import es.neverachefai.core.ui.system.PlatformBackHandler
 import es.neverachefai.feature.navigation.MainTab
 import es.neverachefai.feature.navigation.PantryFlow
 import es.neverachefai.feature.navigation.RecipesFlow
 import es.neverachefai.feature.navigation.RootFlow
 import es.neverachefai.feature.onboarding.ui.InitialPreferencesScreen
 import es.neverachefai.feature.onboarding.ui.OnboardingScreen
-import es.neverachefai.feature.pantry.ui.AddIngredientsScreen
 import es.neverachefai.feature.pantry.ui.FoodDetailScreen
 import es.neverachefai.feature.pantry.ui.IngredientReviewScreen
 import es.neverachefai.feature.pantry.ui.PantryScreen
@@ -17,6 +20,7 @@ import es.neverachefai.feature.recipes.ui.RecipeDetailScreen
 import es.neverachefai.feature.recipes.ui.RecipeGenerationScreen
 import es.neverachefai.feature.recipes.ui.RecipeResultsScreen
 import es.neverachefai.feature.settings.ui.SettingsScreen
+import es.neverachefai.feature.shopping.ui.AddProductTarget
 import es.neverachefai.feature.shopping.ui.AddShoppingMode
 import es.neverachefai.feature.shopping.ui.AddShoppingProductScreen
 import es.neverachefai.feature.shopping.ui.AddShoppingProductUiState
@@ -29,8 +33,19 @@ fun NeveraChefApp(
     onRequestCameraPermission: () -> Unit = {},
     onRequestMicrophonePermission: () -> Unit = {},
     onRequestSpeechToText: ((String) -> Unit) -> Unit = {},
+    onExitApp: () -> Unit = {},
 ) {
     val appState = rememberNeveraChefAppState()
+    PlatformBackHandler(onBack = appState::handleSystemBack)
+    if (appState.showExitConfirmation) {
+        ExitConfirmationDialog(
+            onDismiss = { appState.showExitConfirmation = false },
+            onExit = {
+                appState.showExitConfirmation = false
+                onExitApp()
+            },
+        )
+    }
 
     when (appState.rootFlow) {
         RootFlow.WELCOME -> OnboardingScreen(onContinue = { appState.rootFlow = RootFlow.PREFERENCES })
@@ -40,12 +55,24 @@ fun NeveraChefApp(
             selectedTab = appState.currentTab,
             onTabSelected = { appState.currentTab = it },
             showBottomBar = !(appState.currentTab == MainTab.SHOPPING && appState.showAddShoppingProduct) &&
+                !(appState.currentTab == MainTab.PANTRY && appState.pantryFlow == PantryFlow.ADD) &&
                 !(appState.currentTab == MainTab.PANTRY && appState.pantryFlow == PantryFlow.DETAIL),
-            contentHorizontalPadding = if (appState.currentTab == MainTab.SHOPPING && appState.showAddShoppingProduct) 0.dp else 12.dp,
-            contentVerticalPadding = if (appState.currentTab == MainTab.SHOPPING && appState.showAddShoppingProduct) 0.dp else 8.dp,
+            contentHorizontalPadding = if (
+                (appState.currentTab == MainTab.SHOPPING && appState.showAddShoppingProduct) ||
+                (appState.currentTab == MainTab.PANTRY && appState.pantryFlow == PantryFlow.ADD)
+            ) 0.dp else 12.dp,
+            contentVerticalPadding = if (
+                (appState.currentTab == MainTab.SHOPPING && appState.showAddShoppingProduct) ||
+                (appState.currentTab == MainTab.PANTRY && appState.pantryFlow == PantryFlow.ADD)
+            ) 0.dp else 8.dp,
             content = {
                 when (appState.currentTab) {
-                    MainTab.PANTRY -> PantryContent(appState)
+                    MainTab.PANTRY -> PantryContent(
+                        appState = appState,
+                        microphonePermissionGranted = microphonePermissionGranted,
+                        onRequestMicrophonePermission = onRequestMicrophonePermission,
+                        onRequestSpeechToText = onRequestSpeechToText,
+                    )
                     MainTab.RECIPES -> RecipesContent(appState)
                     MainTab.SHOPPING -> ShoppingContent(
                         appState = appState,
@@ -69,12 +96,42 @@ fun NeveraChefApp(
 }
 
 @Composable
-private fun PantryContent(appState: NeveraChefAppState) {
+private fun ExitConfirmationDialog(
+    onDismiss: () -> Unit,
+    onExit: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Salir de NeveraChef") },
+        text = { Text("¿Seguro que quieres salir de la aplicación?") },
+        confirmButton = {
+            TextButton(onClick = onExit) {
+                Text("Salir")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        },
+    )
+}
+
+@Composable
+private fun PantryContent(
+    appState: NeveraChefAppState,
+    microphonePermissionGranted: Boolean,
+    onRequestMicrophonePermission: () -> Unit,
+    onRequestSpeechToText: ((String) -> Unit) -> Unit,
+) {
     when (appState.pantryFlow) {
         PantryFlow.LIST -> PantryScreen(
             foods = appState.pantryFoods,
             expiryReminderDays = appState.expiryReminderDays,
-            onAdd = { appState.pantryFlow = PantryFlow.ADD },
+            onAdd = {
+                appState.addShoppingState = AddShoppingProductUiState()
+                appState.pantryFlow = PantryFlow.ADD
+            },
             onReview = { appState.pantryFlow = PantryFlow.REVIEW },
             onFoodClick = {
                 appState.selectedFood = it
@@ -82,7 +139,32 @@ private fun PantryContent(appState: NeveraChefAppState) {
             },
             onDeleteFoods = appState::deletePantryFoods,
         )
-        PantryFlow.ADD -> AddIngredientsScreen(onBack = { appState.pantryFlow = PantryFlow.LIST })
+        PantryFlow.ADD -> AddShoppingProductScreen(
+            state = appState.addShoppingState,
+            target = AddProductTarget.Inventory,
+            onModeSelected = { appState.addShoppingState = appState.addShoppingState.copy(selectedMode = it) },
+            onProductNameChange = { appState.addShoppingState = appState.addShoppingState.copy(productName = it) },
+            onQuantityChange = { appState.addShoppingState = appState.addShoppingState.copy(quantity = it) },
+            onQuantityModeChange = { appState.addShoppingState = appState.addShoppingState.copy(quantityMode = it) },
+            onDestinationChange = { appState.addShoppingState = appState.addShoppingState.copy(destination = it) },
+            onLocationChange = { appState.addShoppingState = appState.addShoppingState.copy(location = it) },
+            onVoiceClick = {
+                if (!microphonePermissionGranted) {
+                    onRequestMicrophonePermission()
+                } else {
+                    onRequestSpeechToText { spokenText ->
+                        appState.addShoppingState = appState.addShoppingState.copy(selectedMode = AddShoppingMode.Voice)
+                        appState.applySpokenProductInput(spokenText, AddProductTarget.Inventory)
+                    }
+                }
+            },
+            onCameraClick = {},
+            onBackClick = {
+                appState.addShoppingState = AddShoppingProductUiState()
+                appState.pantryFlow = PantryFlow.LIST
+            },
+            onAddToShoppingListClick = appState::addInventoryProduct,
+        )
         PantryFlow.REVIEW -> IngredientReviewScreen(onBack = { appState.pantryFlow = PantryFlow.LIST })
         PantryFlow.DETAIL -> FoodDetailScreen(
             food = appState.selectedFood,

@@ -22,6 +22,7 @@ import es.neverachefai.feature.shopping.data.ShoppingRepositoryImpl
 import es.neverachefai.feature.shopping.domain.model.ShoppingListItem
 import es.neverachefai.feature.shopping.domain.usecase.GetShoppingItemsUseCase
 import es.neverachefai.feature.shopping.domain.usecase.SaveShoppingItemsUseCase
+import es.neverachefai.feature.shopping.ui.AddProductTarget
 import es.neverachefai.feature.shopping.ui.AddShoppingProductUiState
 
 private const val KEY_EXPIRY_REMINDER_DAYS = "settings.expiry_reminder_days"
@@ -47,6 +48,7 @@ class NeveraChefAppState(
     var addShoppingState by mutableStateOf(AddShoppingProductUiState())
     var shoppingItems by mutableStateOf(getShoppingItems())
     var expiryReminderDays by mutableStateOf(loadExpiryReminderDays())
+    var showExitConfirmation by mutableStateOf(false)
 
     fun completeOnboarding() {
         AppPreferences.setOnboardingSeen(true)
@@ -68,6 +70,48 @@ class NeveraChefAppState(
         addShoppingState = AddShoppingProductUiState()
         shoppingItems = emptyList()
         expiryReminderDays = loadExpiryReminderDays()
+        showExitConfirmation = false
+    }
+
+    fun handleSystemBack() {
+        showExitConfirmation = false
+        when (rootFlow) {
+            RootFlow.PREFERENCES -> rootFlow = RootFlow.ONBOARDING
+            RootFlow.WELCOME,
+            RootFlow.ONBOARDING -> showExitConfirmation = true
+            RootFlow.MAIN -> handleMainBack()
+        }
+    }
+
+    private fun handleMainBack() {
+        when (currentTab) {
+            MainTab.PANTRY -> when (pantryFlow) {
+                PantryFlow.LIST -> showExitConfirmation = true
+                PantryFlow.ADD -> {
+                    addShoppingState = AddShoppingProductUiState()
+                    pantryFlow = PantryFlow.LIST
+                }
+                PantryFlow.REVIEW -> pantryFlow = PantryFlow.LIST
+                PantryFlow.DETAIL -> {
+                    selectedFood = null
+                    pantryFlow = PantryFlow.LIST
+                }
+            }
+            MainTab.RECIPES -> when (recipesFlow) {
+                RecipesFlow.GENERATE -> showExitConfirmation = true
+                RecipesFlow.RESULTS -> recipesFlow = RecipesFlow.GENERATE
+                RecipesFlow.DETAIL -> recipesFlow = RecipesFlow.RESULTS
+            }
+            MainTab.SHOPPING -> {
+                if (showAddShoppingProduct) {
+                    addShoppingState = AddShoppingProductUiState()
+                    showAddShoppingProduct = false
+                } else {
+                    showExitConfirmation = true
+                }
+            }
+            MainTab.SETTINGS -> showExitConfirmation = true
+        }
     }
 
     fun deletePantryFoods(ids: Set<String>) {
@@ -146,7 +190,40 @@ class NeveraChefAppState(
         showAddShoppingProduct = false
     }
 
+    fun addInventoryProduct() {
+        val itemName = addShoppingState.productName.trim()
+        if (itemName.isNotEmpty()) {
+            val iconKey = addShoppingState.destination.toCategoryIconKey()
+            val parsedQuantity = parseQuantityInput(
+                rawValue = addShoppingState.quantity,
+                quantityMode = addShoppingState.quantityMode,
+            )
+            val currentPantry = getPantryFoods().toMutableList()
+            currentPantry += PantryFood(
+                id = "pantry_manual_${currentPantry.size + 1}_${itemName.lowercase().replace(" ", "_")}",
+                name = itemName,
+                quantity = parsedQuantity.displayLabel,
+                quantityValue = parsedQuantity.value,
+                quantityUnit = parsedQuantity.unit,
+                category = iconKey,
+                locationKey = addShoppingState.location.toDestinationKey(),
+                expiryLabel = null,
+                expiryDateIso = null,
+                addedDateIso = platformTodayIsoDate(),
+                iconKey = iconKey,
+            )
+            savePantryFoods(currentPantry)
+            pantryFoods = currentPantry.map { it.toPantryFoodUi() }
+        }
+        addShoppingState = AddShoppingProductUiState()
+        pantryFlow = PantryFlow.LIST
+    }
+
     fun applySpokenShoppingInput(spokenText: String) {
+        applySpokenProductInput(spokenText, AddProductTarget.ShoppingList)
+    }
+
+    fun applySpokenProductInput(spokenText: String, target: AddProductTarget) {
         val parsed = parseSpokenShoppingInput(spokenText)
         addShoppingState = addShoppingState.copy(
             selectedMode = es.neverachefai.feature.shopping.ui.AddShoppingMode.Voice,
@@ -157,7 +234,10 @@ class NeveraChefAppState(
             location = parsed.location ?: addShoppingState.location,
         )
         if (parsed.shouldAdd) {
-            addShoppingProduct()
+            when (target) {
+                AddProductTarget.ShoppingList -> addShoppingProduct()
+                AddProductTarget.Inventory -> addInventoryProduct()
+            }
         }
     }
 
