@@ -3,20 +3,26 @@ package es.neverachefai.feature.onboarding.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -34,6 +40,7 @@ import androidx.compose.ui.unit.sp
 import es.neverachefai.core.designsystem.NeveraChefColors
 import neverachefai.shared.generated.resources.Res
 import neverachefai.shared.generated.resources.ic_nc_check_square
+import neverachefai.shared.generated.resources.ic_nc_plus
 import org.jetbrains.compose.resources.painterResource
 
 enum class RecipeGoal(val label: String) {
@@ -72,174 +79,273 @@ fun InitialPreferencesScreen(onSave: () -> Unit) {
         )
     }
 
-    Column(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
-            .statusBarsPadding()
-            .padding(horizontal = 20.dp, vertical = 18.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+            .background(Color.White),
     ) {
-        Text(
-            text = "Configura NeveraChef",
-            color = NeveraChefColors.Ink,
-            fontSize = 27.sp,
-            lineHeight = 29.sp,
-            fontWeight = FontWeight.Bold,
-        )
-        Text(
-            text = "Solo necesitamos preferencias basicas para proponer recetas mejores. Puedes cambiarlo luego en Ajustes.",
-            color = NeveraChefColors.Muted,
-            fontSize = 13.sp,
-            lineHeight = 17.sp,
-        )
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(NeveraChefColors.SuccessSoft, RoundedCornerShape(20.dp))
-                .padding(13.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            androidx.compose.material3.Icon(
-                painter = painterResource(Res.drawable.ic_nc_check_square),
-                contentDescription = null,
-                tint = Color(0xFF2F8F5B),
-            )
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text("IA bajo tu control", color = NeveraChefColors.Ink, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                Text(
-                    "La IA sugiere, pero tu revisas antes de guardar. Tus datos se quedan en este movil.",
-                    color = NeveraChefColors.Muted,
-                    fontSize = 12.sp,
-                    lineHeight = 15.sp,
-                )
-            }
-        }
+        val compactHeight = maxHeight < 760.dp
+        val horizontalPadding = if (maxWidth < 380.dp) 18.dp else 20.dp
+        val spacing = if (compactHeight) 10.dp else 13.dp
 
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .background(NeveraChefColors.Soft, RoundedCornerShape(24.dp))
-                .border(1.dp, NeveraChefColors.Line, RoundedCornerShape(24.dp))
-                .padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text("Personas en casa", color = NeveraChefColors.Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                    Text("Para ajustar raciones", color = NeveraChefColors.Muted, fontSize = 12.sp)
-                }
-                Row(
-                    modifier = Modifier
-                        .height(38.dp)
-                        .background(Color.White, RoundedCornerShape(19.dp))
-                        .border(1.dp, NeveraChefColors.Line, RoundedCornerShape(19.dp))
-                        .padding(horizontal = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Surface(onClick = { if (state.peopleCount > 1) state = state.copy(peopleCount = state.peopleCount - 1) }, color = Color.Transparent) {
-                        Text("-", color = NeveraChefColors.Muted, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                    }
-                    Text(state.peopleCount.toString(), color = NeveraChefColors.Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                    Surface(onClick = { state = state.copy(peopleCount = state.peopleCount + 1) }, color = Color.Transparent) {
-                        Text("+", color = NeveraChefColors.Blue, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text("Hay ninos en casa", color = NeveraChefColors.Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                    Text("Recetas mas familiares", color = NeveraChefColors.Muted, fontSize = 12.sp)
-                }
-                Switch(
-                    checked = state.hasChildren,
-                    onCheckedChange = { state = state.copy(hasChildren = it) },
-                )
-            }
-        }
-
-        Text("Objetivo principal", color = NeveraChefColors.Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            RecipeGoal.entries.chunked(2).forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    row.forEach { goal ->
-                        FilterChip(
-                            selected = state.selectedGoal == goal,
-                            onClick = { state = state.copy(selectedGoal = goal) },
-                            label = { Text(goal.label) },
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                }
-            }
-        }
-
-        Surface(
-            onClick = {},
-            color = Color.White,
-            shape = RoundedCornerShape(18.dp),
-            border = BorderStroke(1.dp, NeveraChefColors.Line),
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(horizontal = horizontalPadding, vertical = if (compactHeight) 14.dp else 18.dp),
         ) {
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(5.dp),
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(spacing),
             ) {
-                Text("RESTRICCIONES O ALERGIAS", color = NeveraChefColors.Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                Text(state.restrictions.ifBlank { "Sin restricciones" }, color = NeveraChefColors.Ink, fontSize = 14.sp)
-            }
-        }
+                Text(
+                    text = "Configura NeveraChef",
+                    color = NeveraChefColors.Ink,
+                    fontSize = if (compactHeight) 26.sp else 28.sp,
+                    lineHeight = if (compactHeight) 28.sp else 31.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = "Solo necesitamos preferencias básicas para proponer recetas mejores. Puedes cambiarlo luego en Ajustes.",
+                    color = NeveraChefColors.Muted,
+                    fontSize = if (compactHeight) 13.sp else 14.sp,
+                    lineHeight = if (compactHeight) 17.sp else 19.sp,
+                )
 
-        Text("Tiempo habitual", color = NeveraChefColors.Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            MaxCookingTime.entries.forEach { time ->
-                Surface(
-                    onClick = { state = state.copy(selectedTime = time) },
+                Row(
                     modifier = Modifier
-                        .weight(1f)
-                        .height(40.dp),
-                    color = if (state.selectedTime == time) NeveraChefColors.Blue else Color.White,
-                    shape = RoundedCornerShape(20.dp),
-                    border = if (state.selectedTime == time) null else BorderStroke(1.dp, NeveraChefColors.Line),
+                        .fillMaxWidth()
+                        .background(NeveraChefColors.SuccessSoft, RoundedCornerShape(22.dp))
+                        .padding(14.dp),
+                    horizontalArrangement = Arrangement.spacedBy(11.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_nc_check_square),
+                        contentDescription = null,
+                        tint = Color(0xFF2F8F5B),
+                    )
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text("IA bajo tu control", color = NeveraChefColors.Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                         Text(
-                            text = time.label,
-                            color = if (state.selectedTime == time) Color.White else NeveraChefColors.Muted,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
+                            "La IA sugiere, pero tú revisas antes de guardar. Tus datos se quedan en este móvil.",
+                            color = NeveraChefColors.Muted,
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp,
                         )
                     }
                 }
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(NeveraChefColors.Soft, RoundedCornerShape(24.dp))
+                        .border(1.dp, NeveraChefColors.Line, RoundedCornerShape(24.dp))
+                        .padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(13.dp),
+                ) {
+                    HouseholdRow(
+                        peopleCount = state.peopleCount,
+                        onMinus = { if (state.peopleCount > 1) state = state.copy(peopleCount = state.peopleCount - 1) },
+                        onPlus = { state = state.copy(peopleCount = (state.peopleCount + 1).coerceAtMost(12)) },
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Hay niños en casa", color = NeveraChefColors.Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            Text("Recetas más familiares", color = NeveraChefColors.Muted, fontSize = 13.sp)
+                        }
+                        Switch(
+                            checked = state.hasChildren,
+                            onCheckedChange = { state = state.copy(hasChildren = it) },
+                        )
+                    }
+                }
+
+                Text("Objetivo principal", color = NeveraChefColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+
+                Column(verticalArrangement = Arrangement.spacedBy(9.dp), modifier = Modifier.fillMaxWidth()) {
+                    RecipeGoal.entries.chunked(2).forEach { row ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(9.dp), modifier = Modifier.fillMaxWidth()) {
+                            row.forEach { goal ->
+                                PreferenceChip(
+                                    text = goal.label,
+                                    selected = state.selectedGoal == goal,
+                                    modifier = Modifier.weight(1f),
+                                    onClick = { state = state.copy(selectedGoal = goal) },
+                                )
+                            }
+                        }
+                    }
+                }
+
+                RestrictionsCard(text = state.restrictions.ifBlank { "Sin restricciones" })
+
+                Text("Tiempo habitual", color = NeveraChefColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    MaxCookingTime.entries.forEach { time ->
+                        TimeChip(
+                            label = time.label,
+                            selected = state.selectedTime == time,
+                            modifier = Modifier.weight(1f),
+                            onClick = { state = state.copy(selectedTime = time) },
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            Spacer(modifier = Modifier.height(if (compactHeight) 12.dp else 16.dp))
+
+            Button(
+                onClick = onSave,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp),
+                shape = RoundedCornerShape(27.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = NeveraChefColors.Blue),
+            ) {
+                Text("Guardar y continuar", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
         }
+    }
+}
 
-        Spacer(modifier = Modifier.weight(1f))
+@Composable
+private fun HouseholdRow(
+    peopleCount: Int,
+    onMinus: () -> Unit,
+    onPlus: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text("Personas en casa", color = NeveraChefColors.Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text("Para ajustar raciones", color = NeveraChefColors.Muted, fontSize = 13.sp)
+        }
+        Row(
+            modifier = Modifier
+                .height(44.dp)
+                .background(Color.White, RoundedCornerShape(22.dp))
+                .border(1.dp, NeveraChefColors.Line, RoundedCornerShape(22.dp))
+                .padding(horizontal = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            CounterButton(text = "-", color = NeveraChefColors.Muted, onClick = onMinus)
+            Text(peopleCount.toString(), color = NeveraChefColors.Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            CounterButton(text = "+", color = NeveraChefColors.Blue, onClick = onPlus)
+        }
+    }
+}
 
-        Button(
-            onClick = onSave,
+@Composable
+private fun CounterButton(
+    text: String,
+    color: Color,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        color = Color.Transparent,
+        shape = CircleShape,
+        modifier = Modifier.size(28.dp),
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(text, color = color, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun PreferenceChip(
+    text: String,
+    selected: Boolean,
+    modifier: Modifier,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier.height(41.dp),
+        color = if (selected) NeveraChefColors.AccentSoft else Color.White,
+        shape = RoundedCornerShape(10.dp),
+        border = if (selected) null else BorderStroke(1.dp, NeveraChefColors.Line),
+    ) {
+        Box(
+            modifier = Modifier.padding(horizontal = 14.dp),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            Text(
+                text = text,
+                color = NeveraChefColors.Ink,
+                fontSize = 14.sp,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            )
+        }
+    }
+}
+
+@Composable
+private fun RestrictionsCard(text: String) {
+    Surface(
+        onClick = {},
+        color = Color.White,
+        shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(1.dp, NeveraChefColors.Line),
+    ) {
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(52.dp),
-            shape = RoundedCornerShape(26.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = NeveraChefColors.Blue),
+                .padding(13.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("Guardar y continuar", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+            Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                Text("RESTRICCIONES O ALERGIAS", color = NeveraChefColors.Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Text(text, color = NeveraChefColors.Ink, fontSize = 15.sp)
+            }
+            Icon(
+                painter = painterResource(Res.drawable.ic_nc_plus),
+                contentDescription = null,
+                tint = NeveraChefColors.Muted,
+                modifier = Modifier.size(17.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun TimeChip(
+    label: String,
+    selected: Boolean,
+    modifier: Modifier,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier.height(44.dp),
+        color = if (selected) NeveraChefColors.Blue else Color.White,
+        shape = RoundedCornerShape(22.dp),
+        border = if (selected) null else BorderStroke(1.dp, NeveraChefColors.Line),
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                text = label,
+                color = if (selected) Color.White else NeveraChefColors.Muted,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+            )
         }
     }
 }

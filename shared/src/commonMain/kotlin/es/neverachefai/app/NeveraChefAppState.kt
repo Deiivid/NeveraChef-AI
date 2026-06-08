@@ -18,6 +18,10 @@ import es.neverachefai.feature.pantry.ui.PantryFoodUi
 import es.neverachefai.feature.pantry.ui.PantryLocation
 import es.neverachefai.feature.pantry.ui.platformTodayIsoDate
 import es.neverachefai.feature.pantry.ui.toPantryFoodUi
+import es.neverachefai.feature.recipes.domain.model.Recipe
+import es.neverachefai.feature.recipes.domain.model.RecipeGenerationRequest
+import es.neverachefai.feature.recipes.domain.model.RecipeGenerationResult
+import es.neverachefai.feature.recipes.domain.usecase.GenerateRecipesUseCase
 import es.neverachefai.feature.shopping.data.ShoppingRepositoryImpl
 import es.neverachefai.feature.shopping.domain.model.ShoppingListItem
 import es.neverachefai.feature.shopping.domain.usecase.GetShoppingItemsUseCase
@@ -37,13 +41,17 @@ class NeveraChefAppState(
     private val savePantryFoods: SavePantryFoodsUseCase = SavePantryFoodsUseCase(PantryRepositoryImpl()),
     private val getShoppingItems: GetShoppingItemsUseCase = GetShoppingItemsUseCase(ShoppingRepositoryImpl()),
     private val saveShoppingItemsUseCase: SaveShoppingItemsUseCase = SaveShoppingItemsUseCase(ShoppingRepositoryImpl()),
+    private val generateRecipesUseCase: GenerateRecipesUseCase = GenerateRecipesUseCase(),
 ) {
     var rootFlow by mutableStateOf(if (AppPreferences.isOnboardingSeen()) RootFlow.MAIN else RootFlow.ONBOARDING)
     var currentTab by mutableStateOf(MainTab.PANTRY)
     var pantryFlow by mutableStateOf(PantryFlow.LIST)
     var selectedFood by mutableStateOf<PantryFoodUi?>(null)
     var pantryFoods by mutableStateOf(loadPantryFoodUi())
-    var recipesFlow by mutableStateOf(RecipesFlow.GENERATE)
+    var recipesFlow by mutableStateOf(RecipesFlow.RESULTS)
+    var recipeGenerationResult by mutableStateOf<RecipeGenerationResult?>(null)
+    var selectedRecipe by mutableStateOf<Recipe?>(null)
+    private var recipeFocusFoodId by mutableStateOf<String?>(null)
     var showAddShoppingProduct by mutableStateOf(false)
     var addShoppingState by mutableStateOf(AddShoppingProductUiState())
     var shoppingItems by mutableStateOf(getShoppingItems())
@@ -65,7 +73,10 @@ class NeveraChefAppState(
         pantryFlow = PantryFlow.LIST
         selectedFood = null
         pantryFoods = emptyList()
-        recipesFlow = RecipesFlow.GENERATE
+        recipesFlow = RecipesFlow.RESULTS
+        recipeGenerationResult = null
+        selectedRecipe = null
+        recipeFocusFoodId = null
         showAddShoppingProduct = false
         addShoppingState = AddShoppingProductUiState()
         shoppingItems = emptyList()
@@ -98,9 +109,9 @@ class NeveraChefAppState(
                 }
             }
             MainTab.RECIPES -> when (recipesFlow) {
-                RecipesFlow.GENERATE -> showExitConfirmation = true
-                RecipesFlow.RESULTS -> recipesFlow = RecipesFlow.GENERATE
+                RecipesFlow.RESULTS -> showExitConfirmation = true
                 RecipesFlow.DETAIL -> recipesFlow = RecipesFlow.RESULTS
+                RecipesFlow.GUIDE -> recipesFlow = RecipesFlow.DETAIL
             }
             MainTab.SHOPPING -> {
                 if (showAddShoppingProduct) {
@@ -245,6 +256,52 @@ class NeveraChefAppState(
         val clamped = days.coerceIn(2, 10)
         expiryReminderDays = clamped
         AppPreferences.setString(KEY_EXPIRY_REMINDER_DAYS, clamped.toString())
+    }
+
+    fun selectTab(tab: MainTab) {
+        currentTab = tab
+        if (tab == MainTab.RECIPES) {
+            generateRecipesFromInventory()
+        }
+    }
+
+    fun generateRecipesFromInventory() {
+        generateRecipes(focusFoodId = null)
+    }
+
+    fun generateRecipesForFood(foodId: String) {
+        generateRecipes(focusFoodId = foodId)
+    }
+
+    fun regenerateRecipes() {
+        generateRecipes(focusFoodId = recipeFocusFoodId)
+    }
+
+    fun openRecipeDetail(recipe: Recipe) {
+        selectedRecipe = recipe
+        recipesFlow = RecipesFlow.DETAIL
+    }
+
+    fun startCookingGuide() {
+        if (selectedRecipe != null) {
+            recipesFlow = RecipesFlow.GUIDE
+        }
+    }
+
+    private fun generateRecipes(focusFoodId: String?) {
+        val pantry = getPantryFoods()
+        recipeFocusFoodId = focusFoodId
+        recipeGenerationResult = generateRecipesUseCase(
+            RecipeGenerationRequest(
+                pantryFoods = pantry,
+                focusFoodId = focusFoodId,
+                maxMinutes = 30,
+                maxResults = 5,
+            ),
+        )
+        selectedRecipe = null
+        currentTab = MainTab.RECIPES
+        recipesFlow = RecipesFlow.RESULTS
     }
 
     private fun loadPantryFoodUi(): List<PantryFoodUi> = getPantryFoods().map { it.toPantryFoodUi() }

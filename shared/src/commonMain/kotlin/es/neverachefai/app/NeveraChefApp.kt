@@ -17,7 +17,7 @@ import es.neverachefai.feature.pantry.ui.FoodDetailScreen
 import es.neverachefai.feature.pantry.ui.IngredientReviewScreen
 import es.neverachefai.feature.pantry.ui.PantryScreen
 import es.neverachefai.feature.recipes.ui.RecipeDetailScreen
-import es.neverachefai.feature.recipes.ui.RecipeGenerationScreen
+import es.neverachefai.feature.recipes.ui.RecipeCookingGuideScreen
 import es.neverachefai.feature.recipes.ui.RecipeResultsScreen
 import es.neverachefai.feature.settings.ui.SettingsScreen
 import es.neverachefai.feature.shopping.ui.AddProductTarget
@@ -53,10 +53,13 @@ fun NeveraChefApp(
         RootFlow.PREFERENCES -> InitialPreferencesScreen(onSave = appState::completeOnboarding)
         RootFlow.MAIN -> NeveraMainScaffold(
             selectedTab = appState.currentTab,
-            onTabSelected = { appState.currentTab = it },
+            onTabSelected = appState::selectTab,
             showBottomBar = !(appState.currentTab == MainTab.SHOPPING && appState.showAddShoppingProduct) &&
                 !(appState.currentTab == MainTab.PANTRY && appState.pantryFlow == PantryFlow.ADD) &&
-                !(appState.currentTab == MainTab.PANTRY && appState.pantryFlow == PantryFlow.DETAIL),
+                !(appState.currentTab == MainTab.PANTRY && appState.pantryFlow == PantryFlow.REVIEW) &&
+                !(appState.currentTab == MainTab.PANTRY && appState.pantryFlow == PantryFlow.DETAIL) &&
+                !(appState.currentTab == MainTab.RECIPES && appState.recipesFlow == RecipesFlow.DETAIL) &&
+                !(appState.currentTab == MainTab.RECIPES && appState.recipesFlow == RecipesFlow.GUIDE),
             contentHorizontalPadding = if (
                 (appState.currentTab == MainTab.SHOPPING && appState.showAddShoppingProduct) ||
                 (appState.currentTab == MainTab.PANTRY && appState.pantryFlow == PantryFlow.ADD)
@@ -170,6 +173,7 @@ private fun PantryContent(
             food = appState.selectedFood,
             onBack = { appState.pantryFlow = PantryFlow.LIST },
             onSaveEditedFood = appState::saveEditedFood,
+            onGenerateRecipe = { food -> appState.generateRecipesForFood(food.id) },
         )
     }
 }
@@ -177,14 +181,19 @@ private fun PantryContent(
 @Composable
 private fun RecipesContent(appState: NeveraChefAppState) {
     when (appState.recipesFlow) {
-        RecipesFlow.GENERATE -> RecipeGenerationScreen(
-            onGenerate = { appState.recipesFlow = RecipesFlow.RESULTS },
-        )
         RecipesFlow.RESULTS -> RecipeResultsScreen(
-            onOpenDetail = { appState.recipesFlow = RecipesFlow.DETAIL },
+            result = appState.recipeGenerationResult,
+            onOpenDetail = appState::openRecipeDetail,
+            onGenerateAgain = appState::regenerateRecipes,
         )
         RecipesFlow.DETAIL -> RecipeDetailScreen(
+            recipe = appState.selectedRecipe,
             onBack = { appState.recipesFlow = RecipesFlow.RESULTS },
+            onStartGuide = appState::startCookingGuide,
+        )
+        RecipesFlow.GUIDE -> RecipeCookingGuideScreen(
+            recipe = appState.selectedRecipe,
+            onBack = { appState.recipesFlow = RecipesFlow.DETAIL },
         )
     }
 }

@@ -71,6 +71,7 @@ import neverachefai.shared.generated.resources.ic_detail_weight
 import neverachefai.shared.generated.resources.ic_nc_arrow_back
 import neverachefai.shared.generated.resources.ic_nc_alert_triangle
 import neverachefai.shared.generated.resources.ic_nc_calendar
+import neverachefai.shared.generated.resources.ic_nc_chef_hat
 import neverachefai.shared.generated.resources.ic_nc_fridge
 import neverachefai.shared.generated.resources.ic_nc_freezer
 import neverachefai.shared.generated.resources.ic_nc_pantry
@@ -105,6 +106,7 @@ fun FoodDetailScreen(
     food: PantryFoodUi?,
     onBack: () -> Unit,
     onSaveEditedFood: (PantryFoodUi) -> Unit,
+    onGenerateRecipe: (PantryFoodUi) -> Unit,
 ) {
     if (food == null) {
         Column(
@@ -237,6 +239,10 @@ fun FoodDetailScreen(
             onClick = if (isEditing) { { dateTarget = DateTarget.ADDED } } else null,
         )
         if (!isEditing) {
+            RecipeButton(
+                foodName = previewFood.name,
+                onClick = { onGenerateRecipe(previewFood) },
+            )
             EditButton(
                 onClick = {
                     resetDraftState()
@@ -292,6 +298,34 @@ fun FoodDetailScreen(
                 selectedCategory = option
                 categoryPickerVisible = false
             },
+        )
+    }
+}
+
+@Composable
+private fun RecipeButton(
+    foodName: String,
+    onClick: () -> Unit,
+) {
+    Button(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 14.dp),
+    ) {
+        Icon(
+            painter = painterResource(Res.drawable.ic_nc_chef_hat),
+            contentDescription = null,
+            tint = Color.White,
+            modifier = Modifier.size(19.dp),
+        )
+        Spacer(modifier = Modifier.width(10.dp))
+        Text(
+            text = "Generar receta con $foodName",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

@@ -35,6 +35,7 @@ import es.neverachefai.core.designsystem.NeveraChefColors
 import neverachefai.shared.generated.resources.Res
 import neverachefai.shared.generated.resources.ic_nc_check_square
 import neverachefai.shared.generated.resources.ic_nc_chef_hat
+import neverachefai.shared.generated.resources.ic_nc_microphone
 import neverachefai.shared.generated.resources.ic_nc_scan
 import neverachefai.shared.generated.resources.ic_nc_shopping_basket
 import org.jetbrains.compose.resources.DrawableResource
@@ -76,7 +77,7 @@ fun OnboardingScreen(onContinue: () -> Unit) {
                     textAlign = TextAlign.Center,
                 )
                 Text(
-                    text = "NeveraChef ordena tu nevera, revisa la IA antes de guardar y convierte tus alimentos en recetas y compra util.",
+                    text = "NeveraChef ordena tu nevera, revisa la IA antes de guardar y convierte tus alimentos en recetas y compra útil.",
                     color = NeveraChefColors.Muted,
                     fontSize = if (compactHeight) 13.sp else 14.sp,
                     lineHeight = if (compactHeight) 17.sp else 19.sp,
@@ -92,8 +93,8 @@ fun OnboardingScreen(onContinue: () -> Unit) {
                 ) {
                     OnboardingStep(
                         number = "1",
-                        title = "Anade alimentos como te venga mejor",
-                        body = "Manual, voz o camara. Tu decides antes de guardar.",
+                        title = "Añade alimentos como te venga mejor",
+                        body = "Manual, voz o cámara. Tú decides antes de guardar.",
                         numberBackground = NeveraChefColors.AccentSoft,
                         numberColor = NeveraChefColors.Blue,
                         compact = compactHeight,
@@ -153,7 +154,7 @@ private fun LocalFirstBadge() {
             modifier = Modifier.size(15.dp),
         )
         Text(
-            text = "Sin login · datos en tu movil",
+            text = "Sin login · datos en tu móvil",
             color = Color(0xFF2F8F5B),
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
@@ -211,7 +212,7 @@ private fun OnboardingStoryCard(
         }
         FloatingTag(
             text = "Voz",
-            iconRes = Res.drawable.ic_nc_scan,
+            iconRes = Res.drawable.ic_nc_microphone,
             background = NeveraChefColors.Blue,
             contentColor = Color.White,
             modifier = Modifier
@@ -228,7 +229,7 @@ private fun OnboardingStoryCard(
                 .padding(top = if (compact) 36.dp else 50.dp),
         )
         FloatingTag(
-            text = "Compra util",
+            text = "Compra útil",
             iconRes = Res.drawable.ic_nc_shopping_basket,
             background = Color.White,
             contentColor = NeveraChefColors.Ink,

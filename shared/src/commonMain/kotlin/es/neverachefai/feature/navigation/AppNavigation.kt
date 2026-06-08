@@ -22,7 +22,7 @@ enum class PantryFlow {
 }
 
 enum class RecipesFlow {
-    GENERATE,
     RESULTS,
     DETAIL,
+    GUIDE,
 }
