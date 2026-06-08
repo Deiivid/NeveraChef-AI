@@ -267,16 +267,14 @@ fun ShoppingListScreen(
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .offset(y = 20.dp)
                     .fillMaxWidth()
-                    .height(62.dp)
+                    .height(74.dp)
                     .background(Color.White),
             )
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .offset(y = 20.dp)
-                    .padding(start = 0.dp, end = 0.dp, bottom = 12.dp)
+                    .padding(horizontal = 18.dp, vertical = 10.dp)
                     .fillMaxWidth()
                     .height(54.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -302,8 +300,7 @@ fun ShoppingListScreen(
                 onClick = onAddProductClick,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .offset(y = 20.dp)
-                    .padding(end = 22.dp, bottom = 12.dp)
+                    .padding(end = 22.dp, bottom = 22.dp)
                     .size(54.dp),
             )
         }
