@@ -97,6 +97,11 @@ enum class AddShoppingMode(
     Voice("Voz", Res.drawable.ic_nc_microphone),
 }
 
+enum class AddProductTarget {
+    ShoppingList,
+    Inventory,
+}
+
 data class AddShoppingProductUiState(
     val selectedMode: AddShoppingMode = AddShoppingMode.Manual,
     val productName: String = "",
@@ -120,6 +125,7 @@ private val NcMutedBg = Color(0xFFF1F4F2)
 @Composable
 fun AddShoppingProductScreen(
     state: AddShoppingProductUiState,
+    target: AddProductTarget = AddProductTarget.ShoppingList,
     onModeSelected: (AddShoppingMode) -> Unit,
     onProductNameChange: (String) -> Unit,
     onQuantityChange: (String) -> Unit,
@@ -162,7 +168,7 @@ fun AddShoppingProductScreen(
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             item {
-                HeaderSection(onBackClick = onBackClick)
+                HeaderSection(target = target, onBackClick = onBackClick)
             }
             item {
                 ProductNameField(
@@ -216,7 +222,10 @@ fun AddShoppingProductScreen(
                 )
             }
             item {
-                AddToListCta(onAddToShoppingListClick)
+                AddToListCta(
+                    label = if (target == AddProductTarget.Inventory) "Añadir a tu inventario" else "Añadir a la lista",
+                    onAddToShoppingListClick = onAddToShoppingListClick,
+                )
             }
         }
     }
@@ -273,6 +282,7 @@ private fun ProductNameField(
 
 @Composable
 private fun HeaderSection(
+    target: AddProductTarget,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -315,7 +325,7 @@ private fun HeaderSection(
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
-                text = "Añadir producto",
+                text = if (target == AddProductTarget.Inventory) "Añadir alimento" else "Añadir producto",
                 color = NcGreen,
                 fontSize = 32.sp,
                 lineHeight = 36.sp,
@@ -323,7 +333,11 @@ private fun HeaderSection(
                 maxLines = 2,
             )
             Text(
-                text = "Añade el producto que buscas a tu lista de la compra",
+                text = if (target == AddProductTarget.Inventory) {
+                    "Añade lo que ya tienes en tu nevera, despensa o congelador"
+                } else {
+                    "Añade el producto que buscas a tu lista de la compra"
+                },
                 color = NcSubtitle,
                 fontSize = 15.sp,
                 lineHeight = 21.sp,
@@ -333,7 +347,10 @@ private fun HeaderSection(
 }
 
 @Composable
-private fun AddToListCta(onAddToShoppingListClick: () -> Unit) {
+private fun AddToListCta(
+    label: String,
+    onAddToShoppingListClick: () -> Unit,
+) {
     Surface(
         onClick = onAddToShoppingListClick,
         shape = RoundedCornerShape(30.dp),
@@ -356,7 +373,7 @@ private fun AddToListCta(onAddToShoppingListClick: () -> Unit) {
             )
             Spacer(modifier = Modifier.width(12.dp))
             Text(
-                text = "Añadir a la lista",
+                text = label,
                 color = Color.White,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
@@ -601,11 +618,10 @@ private fun CategoryCard(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Icon(
+            Image(
                 painter = painterResource(category.icon),
                 contentDescription = category.label,
-                tint = Color.Unspecified,
-                modifier = Modifier.size(if (selected) 34.dp else 31.dp),
+                modifier = Modifier.size(if (selected) 44.dp else 40.dp),
             )
             Text(
                 text = category.label,

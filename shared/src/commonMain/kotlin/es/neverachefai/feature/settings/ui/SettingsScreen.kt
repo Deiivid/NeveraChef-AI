@@ -79,31 +79,36 @@ fun SettingsScreen(
             .fillMaxSize()
             .background(SettingsColors.Background)
             .statusBarsPadding()
-            .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         HeaderSection()
-        PrivacyCard()
-        Spacer(Modifier.height(10.dp))
-        PermissionsCard(
-            cameraPermissionGranted = cameraPermissionGranted,
-            microphonePermissionGranted = microphonePermissionGranted,
-            onRequestCameraPermission = onRequestCameraPermission,
-            onRequestMicrophonePermission = onRequestMicrophonePermission,
-        )
-        Spacer(Modifier.height(10.dp))
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            PrivacyCard()
+            Spacer(Modifier.height(10.dp))
+            PermissionsCard(
+                cameraPermissionGranted = cameraPermissionGranted,
+                microphonePermissionGranted = microphonePermissionGranted,
+                onRequestCameraPermission = onRequestCameraPermission,
+                onRequestMicrophonePermission = onRequestMicrophonePermission,
+            )
+            Spacer(Modifier.height(10.dp))
 
-        ExpiryReminderCard(
-            selectedDays = expiryReminderDays,
-            daysOptions = reminderOptions,
-            onDaysSelected = onExpiryReminderDaysChange,
-        )
-        Spacer(Modifier.height(10.dp))
+            ExpiryReminderCard(
+                selectedDays = expiryReminderDays,
+                daysOptions = reminderOptions,
+                onDaysSelected = onExpiryReminderDaysChange,
+            )
+            Spacer(Modifier.height(10.dp))
 
-        DataCard(onDeleteClick = { showDeleteDialog = true })
+            DataCard(onDeleteClick = { showDeleteDialog = true })
 
-        Spacer(modifier = Modifier.height(18.dp))
+            Spacer(modifier = Modifier.height(18.dp))
+        }
     }
 
     if (showDeleteDialog) {

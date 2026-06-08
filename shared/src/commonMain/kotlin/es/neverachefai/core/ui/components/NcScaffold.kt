@@ -67,10 +67,10 @@ fun NeveraBottomNavigation(
     ) {
         Row(
             modifier = Modifier
-                .padding(start = 18.dp, top = 10.dp, end = 18.dp, bottom = 20.dp)
-                .height(68.dp)
-                .background(Color.White, RoundedCornerShape(34.dp))
-                .border(1.dp, Color(0xFFE5E7E4), RoundedCornerShape(34.dp)),
+                .padding(start = 18.dp, top = 6.dp, end = 18.dp, bottom = 10.dp)
+                .height(56.dp)
+                .background(Color.White, RoundedCornerShape(28.dp))
+                .border(1.dp, Color(0xFFE5E7E4), RoundedCornerShape(28.dp)),
             horizontalArrangement = Arrangement.spacedBy(0.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -98,7 +98,7 @@ private fun BottomTab(
         modifier = modifier
             .fillMaxWidth()
             .fillMaxSize(),
-        shape = RoundedCornerShape(34.dp),
+        shape = RoundedCornerShape(28.dp),
         color = if (selected) Color(0xFFE8F2E6) else Color.White,
     ) {
         Column(
@@ -109,7 +109,7 @@ private fun BottomTab(
                 painter = painterResource(tab.iconRes()),
                 contentDescription = tab.label,
                 tint = if (selected) Color(0xFF0E5B45) else NeveraChefColors.Muted,
-                modifier = Modifier.size(26.dp),
+                modifier = Modifier.size(22.dp),
             )
             Text(
                 text = tab.label,

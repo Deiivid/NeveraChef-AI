@@ -13,6 +13,7 @@ fun App(
     onRequestCameraPermission: () -> Unit = {},
     onRequestMicrophonePermission: () -> Unit = {},
     onRequestSpeechToText: ((String) -> Unit) -> Unit = {},
+    onExitApp: () -> Unit = {},
 ) {
     NeveraChefTheme {
         NeveraChefApp(
@@ -21,6 +22,7 @@ fun App(
             onRequestCameraPermission = onRequestCameraPermission,
             onRequestMicrophonePermission = onRequestMicrophonePermission,
             onRequestSpeechToText = onRequestSpeechToText,
+            onExitApp = onExitApp,
         )
     }
 }

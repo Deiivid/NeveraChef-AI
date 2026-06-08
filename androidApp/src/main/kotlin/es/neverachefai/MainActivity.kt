@@ -75,6 +75,7 @@ class MainActivity : ComponentActivity() {
                     }
                     speechLauncher.launch(intent)
                 },
+                onExitApp = { finish() },
             )
         }
     }

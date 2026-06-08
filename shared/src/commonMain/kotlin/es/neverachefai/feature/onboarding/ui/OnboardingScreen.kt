@@ -2,14 +2,18 @@ package es.neverachefai.feature.onboarding.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -38,65 +42,97 @@ import org.jetbrains.compose.resources.painterResource
 
 @Composable
 fun OnboardingScreen(onContinue: () -> Unit) {
-    Column(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
-            .statusBarsPadding()
-            .padding(horizontal = 24.dp, vertical = 22.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+            .background(Color.White),
     ) {
-        LocalFirstBadge()
-        Text(
-            text = "Cocina mejor con lo que ya tienes",
-            color = NeveraChefColors.Ink,
-            fontSize = 29.sp,
-            lineHeight = 31.sp,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-        )
-        Text(
-            text = "NeveraChef ordena tu nevera, revisa la IA antes de guardar y convierte tus alimentos en recetas y compra util.",
-            color = NeveraChefColors.Muted,
-            fontSize = 14.sp,
-            lineHeight = 19.sp,
-            textAlign = TextAlign.Center,
-        )
-        OnboardingStoryCard(modifier = Modifier.fillMaxWidth())
-        Column(verticalArrangement = Arrangement.spacedBy(9.dp), modifier = Modifier.fillMaxWidth()) {
-            OnboardingStep(
-                number = "1",
-                title = "Anade alimentos como te venga mejor",
-                body = "Manual, voz o camara. Tu decides antes de guardar.",
-                numberBackground = NeveraChefColors.AccentSoft,
-                numberColor = NeveraChefColors.Blue,
-            )
-            OnboardingStep(
-                number = "2",
-                title = "Cocina con tu inventario real",
-                body = "Recetas con lo que tienes y avisos de caducidad.",
-                numberBackground = NeveraChefColors.SuccessSoft,
-                numberColor = Color(0xFF2F8F5B),
-            )
-            OnboardingStep(
-                number = "3",
-                title = "Compra solo lo que falta",
-                body = "La lista se ordena por nevera y despensa.",
-                numberBackground = NeveraChefColors.WarningSoft,
-                numberColor = Color(0xFF9B6A00),
-            )
-        }
-        Spacer(modifier = Modifier.weight(1f))
-        Button(
-            onClick = onContinue,
+        val compactHeight = maxHeight < 760.dp
+        val horizontalPadding = if (maxWidth < 380.dp) 18.dp else 24.dp
+        val verticalSpacing = if (compactHeight) 11.dp else 16.dp
+
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
-            shape = RoundedCornerShape(26.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = NeveraChefColors.Blue),
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(horizontal = horizontalPadding, vertical = if (compactHeight) 14.dp else 22.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("Configurar NeveraChef", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(verticalSpacing),
+            ) {
+                LocalFirstBadge()
+                Text(
+                    text = "Cocina mejor con lo que ya tienes",
+                    color = NeveraChefColors.Ink,
+                    fontSize = if (compactHeight) 25.sp else 29.sp,
+                    lineHeight = if (compactHeight) 28.sp else 31.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                )
+                Text(
+                    text = "NeveraChef ordena tu nevera, revisa la IA antes de guardar y convierte tus alimentos en recetas y compra util.",
+                    color = NeveraChefColors.Muted,
+                    fontSize = if (compactHeight) 13.sp else 14.sp,
+                    lineHeight = if (compactHeight) 17.sp else 19.sp,
+                    textAlign = TextAlign.Center,
+                )
+                OnboardingStoryCard(
+                    compact = compactHeight,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(if (compactHeight) 7.dp else 9.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    OnboardingStep(
+                        number = "1",
+                        title = "Anade alimentos como te venga mejor",
+                        body = "Manual, voz o camara. Tu decides antes de guardar.",
+                        numberBackground = NeveraChefColors.AccentSoft,
+                        numberColor = NeveraChefColors.Blue,
+                        compact = compactHeight,
+                    )
+                    OnboardingStep(
+                        number = "2",
+                        title = "Cocina con tu inventario real",
+                        body = "Recetas con lo que tienes y avisos de caducidad.",
+                        numberBackground = NeveraChefColors.SuccessSoft,
+                        numberColor = Color(0xFF2F8F5B),
+                        compact = compactHeight,
+                    )
+                    OnboardingStep(
+                        number = "3",
+                        title = "Compra solo lo que falta",
+                        body = "La lista se ordena por nevera y despensa.",
+                        numberBackground = NeveraChefColors.WarningSoft,
+                        numberColor = Color(0xFF9B6A00),
+                        compact = compactHeight,
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+            }
+            Spacer(modifier = Modifier.height(if (compactHeight) 12.dp else 16.dp))
+            Button(
+                onClick = onContinue,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(if (compactHeight) 50.dp else 52.dp),
+                shape = RoundedCornerShape(26.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = NeveraChefColors.Blue),
+            ) {
+                Text(
+                    "Configurar NeveraChef",
+                    color = Color.White,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
         }
     }
 }
@@ -126,22 +162,28 @@ private fun LocalFirstBadge() {
 }
 
 @Composable
-private fun OnboardingStoryCard(modifier: Modifier = Modifier) {
+private fun OnboardingStoryCard(
+    compact: Boolean,
+    modifier: Modifier = Modifier,
+) {
     Box(
         modifier = modifier
-            .height(258.dp)
+            .height(if (compact) 210.dp else 258.dp)
             .background(NeveraChefColors.Soft, RoundedCornerShape(30.dp))
             .border(1.dp, NeveraChefColors.Line, RoundedCornerShape(30.dp))
-            .padding(18.dp),
+            .padding(if (compact) 14.dp else 18.dp),
     ) {
         Column(
             modifier = Modifier
                 .align(Alignment.Center)
-                .size(width = 205.dp, height = 214.dp)
+                .size(
+                    width = if (compact) 176.dp else 205.dp,
+                    height = if (compact) 176.dp else 214.dp,
+                )
                 .background(Color.White, RoundedCornerShape(28.dp))
                 .border(1.dp, NeveraChefColors.Line, RoundedCornerShape(28.dp))
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(9.dp),
+                .padding(if (compact) 10.dp else 12.dp),
+            verticalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 9.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -163,9 +205,9 @@ private fun OnboardingStoryCard(modifier: Modifier = Modifier) {
                     )
                 }
             }
-            MiniStoryRow("🥬", "Espinacas caducan", NeveraChefColors.SuccessSoft)
-            MiniStoryRow("🥚", "Receta en 15 min", NeveraChefColors.WarningSoft)
-            MiniStoryRow("🛒", "Solo falta yogur", NeveraChefColors.AccentSoft)
+            MiniStoryRow("🥬", "Espinacas caducan", NeveraChefColors.SuccessSoft, compact)
+            MiniStoryRow("🥚", "Receta en 15 min", NeveraChefColors.WarningSoft, compact)
+            MiniStoryRow("🛒", "Solo falta yogur", NeveraChefColors.AccentSoft, compact)
         }
         FloatingTag(
             text = "Voz",
@@ -174,7 +216,7 @@ private fun OnboardingStoryCard(modifier: Modifier = Modifier) {
             contentColor = Color.White,
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .padding(top = 30.dp),
+                .padding(top = if (compact) 20.dp else 30.dp),
         )
         FloatingTag(
             text = "Foto",
@@ -183,7 +225,7 @@ private fun OnboardingStoryCard(modifier: Modifier = Modifier) {
             contentColor = NeveraChefColors.Ink,
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(top = 50.dp),
+                .padding(top = if (compact) 36.dp else 50.dp),
         )
         FloatingTag(
             text = "Compra util",
@@ -192,7 +234,7 @@ private fun OnboardingStoryCard(modifier: Modifier = Modifier) {
             contentColor = NeveraChefColors.Ink,
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(bottom = 14.dp),
+                .padding(bottom = if (compact) 10.dp else 14.dp),
         )
     }
 }
@@ -202,17 +244,18 @@ private fun MiniStoryRow(
     emoji: String,
     text: String,
     background: Color,
+    compact: Boolean,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(43.dp)
+            .height(if (compact) 34.dp else 43.dp)
             .background(background, RoundedCornerShape(14.dp))
             .padding(horizontal = 9.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(emoji, fontSize = 18.sp)
+        Text(emoji, fontSize = if (compact) 15.sp else 18.sp)
         Text(text, color = NeveraChefColors.Ink, fontSize = 11.sp, fontWeight = FontWeight.Bold)
     }
 }
@@ -250,27 +293,28 @@ private fun OnboardingStep(
     body: String,
     numberBackground: Color,
     numberColor: Color,
+    compact: Boolean,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(Color.White, RoundedCornerShape(18.dp))
             .border(1.dp, NeveraChefColors.Line, RoundedCornerShape(18.dp))
-            .padding(12.dp),
-        horizontalArrangement = Arrangement.spacedBy(11.dp),
+            .padding(if (compact) 9.dp else 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(if (compact) 9.dp else 11.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             modifier = Modifier
-                .size(30.dp)
+                .size(if (compact) 27.dp else 30.dp)
                 .background(numberBackground, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             Text(number, color = numberColor, fontSize = 13.sp, fontWeight = FontWeight.Bold)
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(title, color = NeveraChefColors.Ink, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-            Text(body, color = NeveraChefColors.Muted, fontSize = 12.sp, lineHeight = 16.sp)
+            Text(title, color = NeveraChefColors.Ink, fontSize = if (compact) 13.sp else 14.sp, fontWeight = FontWeight.Bold)
+            Text(body, color = NeveraChefColors.Muted, fontSize = 12.sp, lineHeight = if (compact) 15.sp else 16.sp)
         }
     }
 }

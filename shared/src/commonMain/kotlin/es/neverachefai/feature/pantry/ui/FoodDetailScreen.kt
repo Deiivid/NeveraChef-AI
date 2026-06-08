@@ -1,6 +1,7 @@
 package es.neverachefai.feature.pantry.ui
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -24,6 +25,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -44,13 +46,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -73,6 +79,7 @@ import neverachefai.shared.generated.resources.ic_nc_pencil
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 private data class Palette(val background: Color, val tint: Color)
 
@@ -136,6 +143,22 @@ fun FoodDetailScreen(
     var expiryDateIso by remember(food.id, food.expiryDateIso) { mutableStateOf(food.expiryDateIso) }
     var addedDateIso by remember(food.id, food.addedDateIso) { mutableStateOf(food.addedDateIso) }
     var dateTarget by remember { mutableStateOf<DateTarget?>(null) }
+    var categoryPickerVisible by remember { mutableStateOf(false) }
+
+    val resetDraftState: () -> Unit = {
+        selectedCategory = categoryOptionFor(food)
+        editedName = food.name
+        selectedLocation = food.location
+        quantityMode = parseQuantityMode(food.quantity)
+        quantityValue = normalizeEditableQuantityValue(food.quantity)
+        weightUnit = parseWeightUnit(food.quantity)
+        expiryDateIso = food.expiryDateIso
+        addedDateIso = food.addedDateIso
+    }
+
+    LaunchedEffect(food.id, food.name, food.quantity, food.location, food.iconKey, food.expiryDateIso, food.addedDateIso) {
+        resetDraftState()
+    }
 
     val resolvedWeightUnit = if (quantityMode == QuantityMode.WEIGHT && (quantityValue.toIntOrNull() ?: 0) >= 1000) {
         "kg"
@@ -176,7 +199,7 @@ fun FoodDetailScreen(
             productName = previewFood.name,
             isEditing = isEditing,
             onProductNameChange = { editedName = it },
-            onCategoryChange = { selectedCategory = it },
+            onCategoryClick = { categoryPickerVisible = true },
         )
         QuantityFieldCard(
             title = quantityInfo.title,
@@ -184,6 +207,12 @@ fun FoodDetailScreen(
             icon = quantityInfo.icon,
             isEditing = isEditing,
             quantityMode = quantityMode,
+            onQuantityModeChange = { mode ->
+                if (quantityMode != mode) {
+                    quantityValue = if (mode == QuantityMode.WEIGHT) "100" else "1"
+                    quantityMode = mode
+                }
+            },
             quantityValue = quantityValue,
             onQuantityValueChange = { quantityValue = it },
             weightUnit = weightUnit,
@@ -209,13 +238,19 @@ fun FoodDetailScreen(
         )
         if (!isEditing) {
             EditButton(
-                onClick = { isEditing = true },
+                onClick = {
+                    resetDraftState()
+                    isEditing = true
+                },
             )
         }
         if (isEditing) {
             EditPanel(
                 category = selectedCategory,
-                onCancel = { isEditing = false },
+                onCancel = {
+                    resetDraftState()
+                    isEditing = false
+                },
                 onSave = {
                     onSaveEditedFood(previewFood)
                     isEditing = false
@@ -245,6 +280,17 @@ fun FoodDetailScreen(
                     null -> Unit
                 }
                 dateTarget = null
+            },
+        )
+    }
+
+    if (categoryPickerVisible) {
+        CategoryPickerDialog(
+            selected = selectedCategory,
+            onDismiss = { categoryPickerVisible = false },
+            onSelect = { option ->
+                selectedCategory = option
+                categoryPickerVisible = false
             },
         )
     }
@@ -281,6 +327,225 @@ private fun Header(onBack: () -> Unit) {
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.align(Alignment.Center),
         )
+    }
+}
+
+@Composable
+private fun CategoryPickerDialog(
+    selected: CategoryOption,
+    onDismiss: () -> Unit,
+    onSelect: (CategoryOption) -> Unit,
+) {
+    var draftSelected by remember(selected) { mutableStateOf(selected) }
+    var query by remember { mutableStateOf("") }
+    val filteredCategories = detailCategoryOptions().filter { option ->
+        option.label.contains(query.trim(), ignoreCase = true)
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 520.dp),
+            shape = RoundedCornerShape(24.dp),
+            color = Color.White,
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE6DDC9)),
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(width = 44.dp, height = 4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(Color(0xFFE3E8DF)),
+                )
+                Text(
+                    text = "Seleccionar categoría",
+                    color = Color(0xFF063D29),
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                CategorySearchField(
+                    value = query,
+                    onValueChange = { query = it },
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 320.dp),
+                ) {
+                    CategoryGrid(
+                        categories = filteredCategories,
+                        selected = draftSelected,
+                        onSelect = { draftSelected = it },
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Surface(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(46.dp),
+                        shape = RoundedCornerShape(15.dp),
+                        color = Color.White,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE3E8DF)),
+                    ) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                            Text(
+                                text = "Cancelar",
+                                color = Color(0xFF4E5662),
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                    }
+                    Surface(
+                        onClick = { onSelect(draftSelected) },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(46.dp),
+                        shape = RoundedCornerShape(15.dp),
+                        color = Color(0xFF0A7A4B),
+                    ) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                            Text(
+                                text = "Aplicar",
+                                color = Color.White,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CategorySearchField(
+    value: String,
+    onValueChange: (String) -> Unit,
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(44.dp),
+        shape = RoundedCornerShape(15.dp),
+        color = Color(0xFFF7F8F4),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE3E8DF)),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 12.dp),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            if (value.isBlank()) {
+                Text(
+                    text = "Buscar categoría",
+                    color = Color(0xFF8A8F99),
+                    fontSize = 14.sp,
+                )
+            }
+            BasicTextField(
+                value = value,
+                onValueChange = onValueChange,
+                singleLine = true,
+                textStyle = androidx.compose.ui.text.TextStyle(
+                    color = Color(0xFF063D29),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                ),
+                cursorBrush = androidx.compose.ui.graphics.SolidColor(Color(0xFF0A5A3A)),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+@Composable
+private fun CategoryGrid(
+    categories: List<CategoryOption>,
+    selected: CategoryOption,
+    onSelect: (CategoryOption) -> Unit,
+) {
+    Column(
+        modifier = Modifier.verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        categories.chunked(2).forEach { rowItems ->
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                rowItems.forEach { option ->
+                    CategoryPickerChip(
+                        option = option,
+                        selected = selected.iconKey == option.iconKey,
+                        onClick = { onSelect(option) },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                repeat(2 - rowItems.size) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CategoryPickerChip(
+    option: CategoryOption,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val theme = categoryTheme(option.iconKey)
+    Surface(
+        onClick = onClick,
+        modifier = modifier.height(54.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = if (selected) Color(0xFFEAF3ED) else Color.White,
+        border = androidx.compose.foundation.BorderStroke(
+            if (selected) 2.dp else 1.dp,
+            if (selected) Color(0xFF0A5A3A) else Color(0xFFE3E8DF),
+        ),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(30.dp)
+                    .background(theme.background, RoundedCornerShape(11.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Image(
+                    painter = painterResource(pantryIconResource(option.iconKey)),
+                    contentDescription = null,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+            Text(
+                text = option.label,
+                color = if (selected) Color(0xFF0A5A3A) else Color(0xFF4E5561),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+        }
     }
 }
 
@@ -510,152 +775,184 @@ private fun ProductCard(
     productName: String,
     isEditing: Boolean,
     onProductNameChange: (String) -> Unit,
-    onCategoryChange: (CategoryOption) -> Unit,
+    onCategoryClick: () -> Unit,
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-        val categories = detailCategoryOptions()
-        val selectedIndex = categories.indexOfFirst { it.iconKey == selectedCategory.iconKey }.coerceAtLeast(0)
-        val heroIconSize = if (maxWidth < 360.dp) 84.dp else 92.dp
-        val heroCardWidth = if (maxWidth < 360.dp) 214.dp else 220.dp
-        val heroCardHeight = if (maxWidth < 360.dp) 226.dp else 232.dp
-        val selectedTheme = categoryTheme(selectedCategory.iconKey)
-        val readOnlyBorder = Color(0xFFE2DDCF)
-        if (!isEditing) {
-            Box(
-                modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.Center,
+        val editImageSize = if (maxWidth < 360.dp) 118.dp else 136.dp
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            color = Color(0xFFFFFCF7),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE6DDC9)),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(18.dp),
             ) {
-                Surface(
-                    modifier = Modifier
-                        .width(heroCardWidth)
-                        .height(heroCardHeight),
-                    shape = RoundedCornerShape(30.dp),
-                    color = selectedTheme.background,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, readOnlyBorder),
+                Image(
+                    painter = painterResource(pantryIconResource(selectedCategory.iconKey)),
+                    contentDescription = selectedCategory.label,
+                    modifier = Modifier.size(editImageSize),
+                )
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 22.dp, bottom = 18.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        Image(
-                            painter = painterResource(pantryIconResource(selectedCategory.iconKey)),
-                            contentDescription = selectedCategory.label,
-                            modifier = Modifier.size(heroIconSize),
+                    FieldLabel(
+                        text = "Categoría",
+                        color = Color(0xFF566172),
+                    )
+                    if (isEditing) {
+                        ProductCategorySelector(
+                            selectedCategory = selectedCategory,
+                            onClick = onCategoryClick,
                         )
-                            Surface(
-                                shape = RoundedCornerShape(18.dp),
-                                color = Color.White,
-                                border = androidx.compose.foundation.BorderStroke(1.dp, readOnlyBorder),
-                            ) {
-                                Text(
-                                text = selectedCategory.label,
-                                color = Color(0xFF0A5A3A),
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-                            )
-                        }
+                    } else {
+                        ReadOnlyCategoryValue(selectedCategory = selectedCategory)
+                    }
+                    FieldLabel(
+                        text = "Nombre del producto",
+                        color = Color(0xFF566172),
+                    )
+                    if (isEditing) {
+                        ProductNameEditor(
+                            value = productName,
+                            onValueChange = onProductNameChange,
+                        )
+                    } else {
                         Text(
                             text = productName,
                             color = Color(0xFF063D29),
-                            fontSize = 19.sp,
+                            fontSize = 20.sp,
                             fontWeight = FontWeight.SemiBold,
-                            textAlign = TextAlign.Center,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(horizontal = 18.dp),
                         )
                     }
                 }
             }
-        } else {
-            val cardWidth = heroCardWidth
-            val cardHeight = heroCardHeight
-            val listState = rememberLazyListState(initialFirstVisibleItemIndex = selectedIndex)
-            val sidePadding = (((maxWidth - cardWidth) / 2f).coerceAtLeast(12.dp))
+        }
+    }
+}
 
-            LaunchedEffect(selectedCategory.iconKey) {
-                if (selectedIndex >= 0) {
-                    listState.animateScrollToItem(selectedIndex)
-                }
-            }
-            LaunchedEffect(listState, categories) {
-                snapshotFlow {
-                    Triple(
-                        listState.isScrollInProgress,
-                        listState.layoutInfo.visibleItemsInfo.map { item ->
-                            item.index to (item.offset + item.size / 2)
-                        },
-                        listState.layoutInfo.viewportEndOffset,
-                    )
-                }.collect { (scrolling, items, viewportEnd) ->
-                    if (!scrolling && items.isNotEmpty()) {
-                        val viewportCenter = viewportEnd / 2
-                        val nearestIndex = items.minByOrNull { abs(it.second - viewportCenter) }?.first ?: selectedIndex
-                        val nearest = categories.getOrNull(nearestIndex) ?: return@collect
-                        if (nearest.iconKey != selectedCategory.iconKey) {
-                            onCategoryChange(nearest)
-                        }
-                    }
-                }
-            }
+@Composable
+private fun ProductCategorySelector(
+    selectedCategory: CategoryOption,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        color = Color.White,
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE4DEC9)),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(9.dp),
+        ) {
+            Image(
+                painter = painterResource(pantryIconResource(selectedCategory.iconKey)),
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+            )
+            Text(
+                text = selectedCategory.label,
+                color = Color(0xFF063D29),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            ChevronDownIcon()
+        }
+    }
+}
 
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(cardHeight),
-                ) {
-                    LazyRow(
-                        state = listState,
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(horizontal = sidePadding),
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        items(categories) { option ->
-                            val optionIndex = categories.indexOf(option)
-                            FoodCarouselItem(
-                                option = option,
-                                selected = optionIndex == selectedIndex,
-                                itemWidth = cardWidth,
-                                itemHeight = cardHeight,
-                                productName = productName,
-                                onProductNameChange = onProductNameChange,
-                                onClick = null,
-                            )
-                        }
-                    }
+@Composable
+private fun ChevronDownIcon() {
+    Canvas(modifier = Modifier.size(18.dp)) {
+        val stroke = 2.dp.toPx()
+        drawLine(
+            color = Color(0xFF0A5A3A),
+            start = Offset(size.width * 0.28f, size.height * 0.40f),
+            end = Offset(size.width * 0.50f, size.height * 0.62f),
+            strokeWidth = stroke,
+            cap = StrokeCap.Round,
+        )
+        drawLine(
+            color = Color(0xFF0A5A3A),
+            start = Offset(size.width * 0.72f, size.height * 0.40f),
+            end = Offset(size.width * 0.50f, size.height * 0.62f),
+            strokeWidth = stroke,
+            cap = StrokeCap.Round,
+        )
+    }
+}
 
-                    if (selectedIndex > 0) {
-                        CarouselArrow(
-                            modifier = Modifier
-                                .align(Alignment.CenterStart)
-                                .padding(start = 8.dp),
-                            direction = ArrowDirection.Left,
-                            onClick = {
-                                val previous = categories.previousFrom(selectedCategory)
-                                onCategoryChange(previous)
-                            },
-                        )
-                    }
-                    if (selectedIndex in 0 until categories.lastIndex) {
-                        CarouselArrow(
-                            modifier = Modifier
-                                .align(Alignment.CenterEnd)
-                                .padding(end = 8.dp),
-                            direction = ArrowDirection.Right,
-                            onClick = {
-                                val next = categories.nextFrom(selectedCategory)
-                                onCategoryChange(next)
-                            },
-                        )
-                    }
-                }
-            }
+@Composable
+private fun ReadOnlyCategoryValue(
+    selectedCategory: CategoryOption,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(9.dp),
+    ) {
+        Image(
+            painter = painterResource(pantryIconResource(selectedCategory.iconKey)),
+            contentDescription = null,
+            modifier = Modifier.size(24.dp),
+        )
+        Text(
+            text = selectedCategory.label,
+            color = Color(0xFF063D29),
+            fontSize = 18.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun ProductNameEditor(
+    value: String,
+    onValueChange: (String) -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        color = Color.White,
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE4DEC9)),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            BasicTextField(
+                value = value,
+                onValueChange = onValueChange,
+                singleLine = true,
+                textStyle = androidx.compose.ui.text.TextStyle(
+                    color = Color(0xFF063D29),
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                ),
+                cursorBrush = androidx.compose.ui.graphics.SolidColor(Color(0xFF0A5A3A)),
+                modifier = Modifier.weight(1f),
+            )
+            Icon(
+                painter = painterResource(Res.drawable.ic_nc_pencil),
+                contentDescription = null,
+                tint = Color(0xFF0A5A3A),
+                modifier = Modifier.size(18.dp),
+            )
         }
     }
 }
@@ -927,85 +1224,14 @@ private fun LocationFieldCard(
     onLocationChange: (PantryLocation) -> Unit,
 ) {
     val neutralBorder = Color(0xFFE8E8E8)
-    val locationAccent = locationTint(selectedLocation)
-    val locationIconBackground = locationBackground(selectedLocation)
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        color = Color.White,
-        border = androidx.compose.foundation.BorderStroke(1.dp, neutralBorder),
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(25.dp),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(42.dp)
-                        .background(locationIconBackground, RoundedCornerShape(16.dp)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painter = painterResource(icon),
-                        contentDescription = null,
-                        tint = locationAccent,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(if (isEditing) 10.dp else 2.dp),
-                ) {
-                    Text(
-                        text = title,
-                        color = Color(0xFF4E5662),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        textAlign = TextAlign.Start,
-                    )
-                    if (!isEditing) {
-                        Text(
-                            text = value,
-                            color = Color(0xFF063D29),
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                            textAlign = TextAlign.Start,
-                        )
-                    }
-                    if (isEditing) {
-                        LocationSelector(
-                            selected = selectedLocation,
-                            onSelect = onLocationChange,
-                        )
-                    }
-                }
-            }
-        }
+    if (isEditing) {
+        LocationSelector(
+            selected = selectedLocation,
+            onSelect = onLocationChange,
+        )
+        return
     }
-}
 
-@Composable
-private fun QuantityFieldCard(
-    title: String,
-    value: String,
-    icon: DrawableResource,
-    isEditing: Boolean,
-    quantityMode: QuantityMode,
-    quantityValue: String,
-    onQuantityValueChange: (String) -> Unit,
-    weightUnit: String,
-    onWeightUnitChange: (String) -> Unit,
-) {
-    val neutralBorder = Color(0xFFE8E8E8)
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
@@ -1019,19 +1245,7 @@ private fun QuantityFieldCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(25.dp),
         ) {
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .background(Color(0xFFEAF3ED), RoundedCornerShape(16.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    painter = painterResource(icon),
-                    contentDescription = null,
-                    tint = Color(0xFF0A5A3A),
-                    modifier = Modifier.size(20.dp),
-                )
-            }
+            LocationHeaderIcon(icon = icon, location = selectedLocation)
 
             Column(
                 modifier = Modifier.weight(1f),
@@ -1044,7 +1258,69 @@ private fun QuantityFieldCard(
                     fontWeight = FontWeight.Medium,
                     textAlign = TextAlign.Start,
                 )
-                if (!isEditing) {
+                Text(
+                    text = value,
+                    color = Color(0xFF063D29),
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Start,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuantityFieldCard(
+    title: String,
+    value: String,
+    icon: DrawableResource,
+    isEditing: Boolean,
+    quantityMode: QuantityMode,
+    onQuantityModeChange: (QuantityMode) -> Unit,
+    quantityValue: String,
+    onQuantityValueChange: (String) -> Unit,
+    weightUnit: String,
+    onWeightUnitChange: (String) -> Unit,
+) {
+    val neutralBorder = Color(0xFFE8E8E8)
+    Surface(
+        modifier = if (isEditing) {
+            Modifier
+                .fillMaxWidth()
+                .shadow(4.dp, RoundedCornerShape(18.dp), clip = false)
+        } else {
+            Modifier.fillMaxWidth()
+        },
+        shape = RoundedCornerShape(18.dp),
+        color = Color.White,
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            if (isEditing) Color(0xFFE8E0D6).copy(alpha = 0.72f) else neutralBorder,
+        ),
+    ) {
+        if (!isEditing) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(25.dp),
+            ) {
+                QuantityHeaderIcon(icon = icon)
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    Text(
+                        text = title,
+                        color = Color(0xFF4E5662),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        textAlign = TextAlign.Start,
+                    )
                     Text(
                         text = value,
                         color = Color(0xFF063D29),
@@ -1056,17 +1332,117 @@ private fun QuantityFieldCard(
                     )
                 }
             }
-
-            if (isEditing) {
-                QuantityStepper(
-                    mode = quantityMode,
-                    value = quantityValue,
-                    onValueChange = onQuantityValueChange,
-                    weightUnit = weightUnit,
-                    onWeightUnitChange = onWeightUnitChange,
-                )
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(40.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Color(0xFFF7F2EA))
+                        .padding(3.dp),
+                ) {
+                    QuantityModeSelector(
+                        selected = quantityMode,
+                        onSelection = onQuantityModeChange,
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    QuantityStepper(
+                        mode = quantityMode,
+                        value = quantityValue,
+                        onValueChange = onQuantityValueChange,
+                        weightUnit = weightUnit,
+                    )
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun LocationHeaderIcon(icon: DrawableResource, location: PantryLocation) {
+    Box(
+        modifier = Modifier
+            .size(42.dp)
+            .background(locationBackground(location), RoundedCornerShape(16.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = null,
+            tint = locationTint(location),
+            modifier = Modifier.size(20.dp),
+        )
+    }
+}
+
+@Composable
+private fun QuantityHeaderIcon(icon: DrawableResource) {
+    Box(
+        modifier = Modifier
+            .size(42.dp)
+            .background(Color(0xFFEAF3ED), RoundedCornerShape(16.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = null,
+            tint = Color(0xFF0A5A3A),
+            modifier = Modifier.size(20.dp),
+        )
+    }
+}
+
+@Composable
+private fun QuantityModeSelector(
+    selected: QuantityMode,
+    onSelection: (QuantityMode) -> Unit,
+) {
+    Row(modifier = Modifier.fillMaxWidth()) {
+        SegmentedTab(
+            label = "Cantidad",
+            selected = selected == QuantityMode.UNITS,
+            modifier = Modifier.weight(1f),
+            onClick = { onSelection(QuantityMode.UNITS) },
+        )
+        SegmentedTab(
+            label = "Peso",
+            selected = selected == QuantityMode.WEIGHT,
+            modifier = Modifier.weight(1f),
+            onClick = { onSelection(QuantityMode.WEIGHT) },
+        )
+    }
+}
+
+@Composable
+private fun WeightUnitSelector(
+    selectedUnit: String,
+    onUnitChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        SegmentedTab(
+            label = "gr",
+            selected = selectedUnit == "gr",
+            modifier = Modifier.weight(1f),
+            onClick = { onUnitChange("gr") },
+        )
+        SegmentedTab(
+            label = "kg",
+            selected = selectedUnit == "kg",
+            modifier = Modifier.weight(1f),
+            onClick = { onUnitChange("kg") },
+        )
     }
 }
 
@@ -1367,85 +1743,88 @@ private fun QuantityStepper(
     value: String,
     onValueChange: (String) -> Unit,
     weightUnit: String,
-    onWeightUnitChange: (String) -> Unit,
 ) {
-    val numericValue = value.toIntOrNull() ?: 0
+    val numericValue = value.replace(",", ".").toDoubleOrNull()?.toInt() ?: 0
     val quantity = numericValue.coerceAtLeast(1)
     val weightValue = numericValue.coerceAtLeast(0)
     val isWeightMode = mode == QuantityMode.WEIGHT
     val showKgInField = isWeightMode && weightValue >= 1000
     val quantityFieldValue = when {
-        isWeightMode && showKgInField -> gramsToKgInput(weightValue)
-        isWeightMode -> weightValue.toString()
+        isWeightMode && showKgInField -> "${gramsToKgInput(weightValue)} kg"
+        isWeightMode -> "$weightValue gr"
         else -> quantity.toString()
     }
 
-    Surface(
-        shape = RoundedCornerShape(20.dp),
-        color = Color(0xFFF6F4EC),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFD9DED3)),
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(width = 44.dp, height = 44.dp)
-                    .clip(RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp))
-                    .background(Color(0xFFE8EEE4))
-                    .clickable {
-                        if (isWeightMode) {
-                            onValueChange((weightValue - 100).coerceAtLeast(0).toString())
-                        } else {
-                            onValueChange((quantity - 1).coerceAtLeast(1).toString())
-                        }
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "−",
-                    color = Color(0xFF1D4D3A),
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Medium,
-                )
-            }
+        CircleControlButton(
+            label = "−",
+            filled = false,
+            onClick = {
+                if (isWeightMode) {
+                    onValueChange((weightValue - 100).coerceAtLeast(0).toString())
+                } else {
+                    onValueChange((quantity - 1).coerceAtLeast(1).toString())
+                }
+            },
+        )
+        Spacer(modifier = Modifier.width(12.dp))
 
-            Box(
-                modifier = Modifier
-                    .size(width = 68.dp, height = 44.dp)
-                    .background(Color.White)
-                    .border(1.dp, Color(0xFFD9DED3)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = quantityFieldValue,
-                    color = Color(0xFF0A5A3A),
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    textAlign = TextAlign.Center,
-                )
-            }
+        OutlinedTextField(
+            value = quantityFieldValue,
+            onValueChange = { raw ->
+                if (isWeightMode && showKgInField) {
+                    val normalized = raw.replace(',', '.').filter { it.isDigit() || it == '.' }
+                    val kg = normalized.toDoubleOrNull() ?: 0.0
+                    val grams = (kg * 1000.0).roundToInt().coerceAtLeast(0)
+                    onValueChange(grams.toString())
+                } else if (isWeightMode) {
+                    onValueChange(raw.filter(Char::isDigit))
+                } else {
+                    val sanitized = raw.filter(Char::isDigit)
+                    val units = sanitized.toIntOrNull()?.coerceAtLeast(1) ?: 1
+                    onValueChange(units.toString())
+                }
+            },
+            modifier = Modifier
+                .width(if (isWeightMode) 118.dp else 92.dp)
+                .height(54.dp),
+            singleLine = true,
+            shape = RoundedCornerShape(14.dp),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = if (showKgInField) KeyboardType.Decimal else KeyboardType.Number,
+            ),
+            textStyle = androidx.compose.ui.text.TextStyle(
+                color = Color(0xFF0A5A3A),
+                fontSize = if (isWeightMode) 19.sp else 24.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+            ),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White,
+                focusedBorderColor = Color(0xFFE4DEC9),
+                unfocusedBorderColor = Color(0xFFE4DEC9),
+                focusedTextColor = Color(0xFF0A5A3A),
+                unfocusedTextColor = Color(0xFF0A5A3A),
+                cursorColor = Color(0xFF0A5A3A),
+            ),
+        )
+        Spacer(modifier = Modifier.width(12.dp))
 
-            Box(
-                modifier = Modifier
-                    .size(width = 44.dp, height = 44.dp)
-                    .clip(RoundedCornerShape(topEnd = 20.dp, bottomEnd = 20.dp))
-                    .background(Color(0xFF0A7A4B))
-                    .clickable {
-                        if (isWeightMode) {
-                            onValueChange((weightValue + 100).toString())
-                        } else {
-                            onValueChange((quantity + 1).toString())
-                        }
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "+",
-                    color = Color.White,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Medium,
-                )
-            }
-        }
+        CircleControlButton(
+            label = "+",
+            filled = true,
+            onClick = {
+                if (isWeightMode) {
+                    onValueChange((weightValue + 100).toString())
+                } else {
+                    onValueChange((quantity + 1).toString())
+                }
+            },
+        )
     }
 }
 
@@ -1455,7 +1834,7 @@ private fun LocationSelector(
     onSelect: (PantryLocation) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
             LocationChoiceChip(
                 modifier = Modifier.weight(1f),
                 title = "Nevera",
@@ -1497,12 +1876,12 @@ private fun LocationChoiceChip(
     }
     Surface(
         onClick = onClick,
-        modifier = modifier.height(40.dp),
+        modifier = modifier.height(54.dp),
         shape = RoundedCornerShape(14.dp),
         color = if (selected) locationBackground(location) else Color.White,
         border = androidx.compose.foundation.BorderStroke(
-            1.dp,
-            if (selected) locationTint(location).copy(alpha = 0.18f) else Color(0xFFE3E8DF),
+            if (selected) 2.dp else 1.dp,
+            if (selected) locationTint(location) else Color(0xFFE3E8DF),
         ),
     ) {
         Row(
@@ -1519,11 +1898,11 @@ private fun LocationChoiceChip(
                 },
                 modifier = Modifier.size(16.dp),
             )
-            Spacer(modifier = Modifier.width(4.dp))
+            Spacer(modifier = Modifier.width(6.dp))
             Text(
                 text = title,
                 color = if (selected) locationTint(location) else Color(0xFF4E5561),
-                fontSize = 11.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 softWrap = false,
@@ -1591,17 +1970,17 @@ private fun SegmentedTab(
 ) {
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(if (selected) Color(0xFFEAF3ED) else Color.Transparent)
+            .clip(RoundedCornerShape(21.dp))
+            .background(if (selected) Color(0xFF006C4D) else Color.Transparent)
             .clickable(onClick = onClick)
-            .padding(vertical = 10.dp),
+            .padding(vertical = 7.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = label,
-            color = if (selected) Color(0xFF0A5A3A) else Color(0xFF4E5561),
-            fontSize = 15.sp,
-            fontWeight = FontWeight.SemiBold,
+            color = if (selected) Color.White else Color(0xFF424A5B),
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
         )
     }
 }
@@ -1614,8 +1993,9 @@ private fun CircleControlButton(
 ) {
     Box(
         modifier = Modifier
-            .size(40.dp)
-            .clip(RoundedCornerShape(20.dp))
+            .size(42.dp)
+            .shadow(if (filled) 4.dp else 2.dp, RoundedCornerShape(21.dp), clip = false)
+            .clip(RoundedCornerShape(21.dp))
             .background(if (filled) Color(0xFF0A7A4B) else Color(0xFFE4EEE7))
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
@@ -1635,124 +2015,6 @@ private fun gramsToKgInput(grams: Int): String {
         kg.toInt().toString()
     } else {
         kg.toString().replace('.', ',')
-    }
-}
-
-@Composable
-private fun EditCategoryChip(
-    option: CategoryOption,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    val theme = categoryTheme(option.iconKey)
-    Surface(
-        onClick = onClick,
-        modifier = Modifier.height(82.dp),
-        shape = RoundedCornerShape(18.dp),
-        color = if (selected) Color(0xFFEAF3ED) else Color.White,
-        border = androidx.compose.foundation.BorderStroke(1.dp, if (selected) Color(0xFF0A5A3A) else Color(0xFFE3E8DF)),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(vertical = 10.dp, horizontal = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(30.dp)
-                    .background(theme.background, RoundedCornerShape(10.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Image(
-                    painter = painterResource(pantryIconResource(option.iconKey)),
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                )
-            }
-            Text(
-                text = option.label,
-                color = if (selected) Color(0xFF0A5A3A) else Color(0xFF4E5561),
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-            )
-        }
-    }
-}
-
-@Composable
-private fun CategoryGrid(
-    selected: CategoryOption,
-    onSelect: (CategoryOption) -> Unit,
-) {
-    val categories = detailCategoryOptions()
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        categories.chunked(3).forEach { rowItems ->
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                rowItems.forEach { option ->
-                    EditCategoryChip(
-                        option = option,
-                        selected = selected.iconKey == option.iconKey,
-                        onClick = { onSelect(option) },
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                repeat(3 - rowItems.size) {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun EditCategoryChip(
-    option: CategoryOption,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val theme = categoryTheme(option.iconKey)
-    Surface(
-        onClick = onClick,
-        modifier = modifier.height(82.dp),
-        shape = RoundedCornerShape(18.dp),
-        color = if (selected) Color(0xFFEAF3ED) else Color.White,
-        border = androidx.compose.foundation.BorderStroke(1.dp, if (selected) Color(0xFF0A5A3A) else Color(0xFFE3E8DF)),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(vertical = 10.dp, horizontal = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(30.dp)
-                    .background(theme.background, RoundedCornerShape(10.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Image(
-                    painter = painterResource(pantryIconResource(option.iconKey)),
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                )
-            }
-            Text(
-                text = option.label,
-                color = if (selected) Color(0xFF0A5A3A) else Color(0xFF4E5561),
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-            )
-        }
     }
 }
 
@@ -1854,17 +2116,9 @@ private fun quantityPresentation(quantity: String): QuantityPresentation {
         QuantityMode.UNITS -> parseQuantityValue(quantity).toIntOrNull()?.coerceAtLeast(1)?.toString() ?: "1"
         QuantityMode.WEIGHT -> {
             val rawValue = parseQuantityValue(quantity).replace(',', '.').toDoubleOrNull() ?: 0.0
-            if (rawValue >= 1000.0) {
-                val kilograms = rawValue / 1000.0
-                val formatted = if (kilograms % 1.0 == 0.0) {
-                    kilograms.toInt().toString()
-                } else {
-                    kilograms.toString().replace('.', ',')
-                }
-                "$formatted kg"
-            } else {
-                "${rawValue.toInt()} gr"
-            }
+            val unit = parseWeightUnit(quantity)
+            val valueInGrams = if (unit == "kg") rawValue * 1000 else rawValue
+            "${gramsFromWeightToUi(valueInGrams, unit)} $unit"
         }
     }
 
@@ -1901,6 +2155,15 @@ private fun parseQuantityValue(quantity: String): String {
     return match.groupValues[1]
 }
 
+private fun normalizeEditableQuantityValue(quantity: String): String {
+    val quantityValue = parseQuantityValue(quantity).replace(",", ".").toDoubleOrNull() ?: 1.0
+    return when (parseWeightUnit(quantity)) {
+        "kg" -> (quantityValue * 1000).toInt().coerceAtLeast(1).toString()
+        "gr" -> quantityValue.toInt().coerceAtLeast(1).toString()
+        else -> quantityValue.toInt().coerceAtLeast(1).toString()
+    }
+}
+
 private fun parseWeightUnit(quantity: String): String {
     val normalized = quantity.trim().lowercase()
     return when {
@@ -1912,9 +2175,36 @@ private fun parseWeightUnit(quantity: String): String {
 
 private fun formatQuantityLabel(value: String, mode: QuantityMode, weightUnit: String): String {
     val cleanValue = value.trim().ifBlank { "1" }
+    val numericValue = cleanValue.replace(",", ".").toDoubleOrNull() ?: 1.0
     return when (mode) {
         QuantityMode.UNITS -> cleanValue.toIntOrNull()?.coerceAtLeast(1)?.toString() ?: "1"
-        QuantityMode.WEIGHT -> "$cleanValue ${weightUnit.ifBlank { "gr" }}"
+        QuantityMode.WEIGHT -> {
+            val unit = if (weightUnit == "kg") "kg" else "gr"
+            val valueText = if (unit == "kg") gramsFromWeightToUi(numericValue, unit) else numericValue.toInt().toString()
+            "$valueText $unit"
+        }
+    }
+}
+
+private fun gramsFromWeightToUi(grams: Double, unit: String): String {
+    return when (unit) {
+        "kg" -> {
+            val kilograms = grams / 1000.0
+            if (kilograms % 1.0 == 0.0) {
+                kilograms.toInt().toString()
+            } else {
+                kilograms.toString().replace('.', ',')
+            }
+        }
+        else -> grams.toInt().toString()
+    }
+}
+
+private fun formatWeightInputValue(grams: Int, unit: String): String {
+    return if (unit == "kg") {
+        gramsFromWeightToUi(grams.toDouble(), "kg")
+    } else {
+        grams.toString()
     }
 }
 
