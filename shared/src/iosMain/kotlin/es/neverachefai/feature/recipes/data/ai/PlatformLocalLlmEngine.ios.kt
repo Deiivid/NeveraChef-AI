@@ -1,3 +1,7 @@
 package es.neverachefai.feature.recipes.data.ai
 
-actual fun createPlatformLocalLlmEngine(): LocalLlmEngine = DisabledLocalLlmEngine
+internal var registeredIosLocalLlmEngine: LocalLlmEngine? = null
+
+actual fun createPlatformLocalLlmEngine(): LocalLlmEngine {
+    return registeredIosLocalLlmEngine ?: DisabledLocalLlmEngine
+}

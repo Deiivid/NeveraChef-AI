@@ -8,18 +8,14 @@ import es.neverachefai.core.designsystem.NeveraChefTheme
 @Composable
 @Preview
 fun App(
-    cameraPermissionGranted: Boolean = false,
     microphonePermissionGranted: Boolean = false,
-    onRequestCameraPermission: () -> Unit = {},
     onRequestMicrophonePermission: () -> Unit = {},
-    onRequestSpeechToText: ((String) -> Unit) -> Unit = {},
+    onRequestSpeechToText: (String, (String) -> Unit) -> Unit = { _, _ -> },
     onExitApp: () -> Unit = {},
 ) {
     NeveraChefTheme {
         NeveraChefApp(
-            cameraPermissionGranted = cameraPermissionGranted,
             microphonePermissionGranted = microphonePermissionGranted,
-            onRequestCameraPermission = onRequestCameraPermission,
             onRequestMicrophonePermission = onRequestMicrophonePermission,
             onRequestSpeechToText = onRequestSpeechToText,
             onExitApp = onExitApp,

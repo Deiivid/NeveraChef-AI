@@ -29,7 +29,7 @@ fun IngredientReviewScreen(onBack: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text("Revisar alimentos", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        Text("Confirma lo detectado antes de cocinar.", color = NeveraChefColors.Muted)
+        Text("Confirma los cambios antes de cocinar.", color = NeveraChefColors.Muted)
 
         Surface(
             modifier = Modifier.fillMaxWidth(),
@@ -45,18 +45,18 @@ fun IngredientReviewScreen(onBack: () -> Unit) {
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Chip("Detectados 8", active = true)
-            Chip("Dudas 2", active = false)
+            Chip("Revisados 8", active = true)
+            Chip("Pendientes 2", active = false)
         }
 
         IngredientRow(
             title = "Espinacas",
-            subtitle = "Alta confianza · 180 g",
+            subtitle = "Confirmado · 180 g",
             tone = NeveraChefColors.Soft,
         )
         IngredientRow(
             title = "Tomate o pimiento",
-            subtitle = "Confianza baja · toca corregir",
+            subtitle = "Revisa el nombre antes de guardar",
             tone = NeveraChefColors.ErrorSoft,
         )
         IngredientRow(
@@ -67,7 +67,7 @@ fun IngredientReviewScreen(onBack: () -> Unit) {
 
         ScreenCard(
             title = "Estado vacío",
-            description = "Escanea la nevera para añadir más alimentos.",
+            description = "Añade alimentos manualmente o por voz.",
         )
 
         Spacer(modifier = Modifier.height(4.dp))

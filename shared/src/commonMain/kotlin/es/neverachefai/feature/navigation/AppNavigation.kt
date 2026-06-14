@@ -17,12 +17,10 @@ enum class MainTab(val label: String, val shortLabel: String) {
 enum class PantryFlow {
     LIST,
     ADD,
-    REVIEW,
     DETAIL,
 }
 
 enum class RecipesFlow {
     RESULTS,
     DETAIL,
-    GUIDE,
 }

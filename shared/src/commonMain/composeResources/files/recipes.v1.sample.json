@@ -1,0 +1,195 @@
+{
+  "version": 1,
+  "locale": "es-ES",
+  "description": "Base inicial reiniciada: 5 recetas verificadas con fuente publica y pasos redactados/adaptados para RAG local.",
+  "schema": {
+    "id": "Identificador estable de la receta.",
+    "title": "Nombre visible.",
+    "source": "Fuente publica usada para verificar ingredientes, cantidades y tecnica.",
+    "mealType": "BREAKFAST, LUNCH, DINNER o ANY.",
+    "difficulty": "EASY, MEDIUM o HARD.",
+    "estimatedMinutes": "Tiempo estimado total en minutos.",
+    "servings": "Raciones orientativas.",
+    "healthScore": "Puntuacion orientativa 0-100 para ordenar alternativas.",
+    "image": "Referencia a asset local.",
+    "requiredIngredients": "Ingredientes reales de la receta que deben verificarse contra inventario.",
+    "optionalIngredients": "Ingredientes marcados como opcionales o de acabado.",
+    "ingredientAmounts": "Cantidades visibles para cada ingrediente.",
+    "steps": "Pasos propios, funcionales y basados en la fuente.",
+    "tags": "Etiquetas para busqueda local."
+  },
+  "recipes": [
+    {
+      "id": "spanish-tortilla-patatas-clasica",
+      "title": "Tortilla de patatas española",
+      "source": {
+        "name": "Bon Viveur",
+        "url": "https://bonviveur.com/es/recetas/tortilla-patatas",
+        "author": "Damián Serrano"
+      },
+      "mealType": "LUNCH",
+      "difficulty": "MEDIUM",
+      "estimatedMinutes": 60,
+      "servings": 4,
+      "healthScore": 70,
+      "image": { "assetKey": "recipe_family_tortilla" },
+      "requiredIngredients": ["patata", "huevo", "aceite de oliva suave", "sal"],
+      "optionalIngredients": ["cebolla"],
+      "ingredientAmounts": {
+        "patata": "700 g",
+        "cebolla": "1 grande opcional",
+        "aceite de oliva suave": "500 ml para freír",
+        "huevo": "6 grandes",
+        "sal": "1 cucharadita"
+      },
+      "steps": [
+        "Pela 700 g de patatas, lávalas y córtalas en láminas finas; si usas cebolla, córtala en juliana.",
+        "Fríe patata y cebolla en aceite de oliva suave a fuego medio hasta que estén tiernas, sin tostarlas en exceso.",
+        "Escurre bien la mezcla, bátela con 6 huevos y 1 cucharadita de sal, y deja reposar unos minutos.",
+        "Cuaja la tortilla en sartén antiadherente por una cara, dale la vuelta con plato y termina el segundo lado al punto que prefieras."
+      ],
+      "tags": ["espanola", "tortilla", "patata", "comida", "cena"]
+    },
+    {
+      "id": "spanish-lentejas-chorizo-abuela",
+      "title": "Lentejas con chorizo de la abuela",
+      "source": {
+        "name": "Bon Viveur",
+        "url": "https://bonviveur.com/es/recetas/lentejas-chorizo",
+        "author": "Laura Ferreira"
+      },
+      "mealType": "LUNCH",
+      "difficulty": "MEDIUM",
+      "estimatedMinutes": 60,
+      "servings": 8,
+      "healthScore": 82,
+      "image": { "assetKey": "recipe_family_legumbre" },
+      "requiredIngredients": ["puerro", "zanahoria", "ajo", "cebolla", "aceite de oliva virgen extra", "pimenton dulce", "laurel", "lenteja", "agua o caldo vegetal", "sal", "chorizo"],
+      "optionalIngredients": [],
+      "ingredientAmounts": {
+        "puerro": "1 ud",
+        "zanahoria": "2 uds",
+        "ajo": "1 diente",
+        "cebolla": "1 ud",
+        "aceite de oliva virgen extra": "2 cucharadas",
+        "pimenton dulce": "1 cucharada",
+        "laurel": "2 hojas",
+        "lenteja": "300 g pardinas",
+        "agua o caldo vegetal": "hasta cubrir",
+        "sal": "al gusto",
+        "chorizo": "2 uds"
+      },
+      "steps": [
+        "Pica fino el puerro, las zanahorias y el ajo; pela la cebolla y déjala entera para poder retirarla luego.",
+        "Sofríe puerro, zanahoria y ajo con 2 cucharadas de aceite durante 8-10 minutos a fuego medio.",
+        "Añade la cebolla entera, pimentón, laurel y lentejas lavadas; mezcla un par de minutos antes de cubrir con agua o caldo.",
+        "Cuando hierva, baja el fuego, añade sal y los chorizos enteros, y cuece unos 30 minutos hasta que la lenteja esté tierna.",
+        "Tritura la cebolla con dos cazos del guiso para espesar, corta el chorizo en rodajas y vuelve a integrarlo antes de servir."
+      ],
+      "tags": ["espanola", "legumbre", "guiso", "comida", "chorizo"]
+    },
+    {
+      "id": "spanish-merluza-rebozada",
+      "title": "Merluza rebozada",
+      "source": {
+        "name": "Bon Viveur",
+        "url": "https://bonviveur.com/es/recetas/merluza-rebozada-frita",
+        "author": "Eva Salorio"
+      },
+      "mealType": "LUNCH",
+      "difficulty": "EASY",
+      "estimatedMinutes": 20,
+      "servings": 2,
+      "healthScore": 74,
+      "image": { "assetKey": "recipe_family_pescado" },
+      "requiredIngredients": ["merluza", "sal", "harina de trigo", "huevo", "aceite para freir"],
+      "optionalIngredients": ["limon", "mayonesa"],
+      "ingredientAmounts": {
+        "merluza": "4 lomos",
+        "sal": "al gusto",
+        "harina de trigo": "50 g",
+        "huevo": "2 uds",
+        "aceite para freir": "100 g",
+        "limon": "unas rodajas opcionales",
+        "mayonesa": "opcional"
+      },
+      "steps": [
+        "Seca 4 lomos de merluza con papel de cocina y sálalos por ambos lados para que el rebozado agarre bien.",
+        "Prepara un bol con 50 g de harina y otro con 2 huevos batidos; pasa la merluza primero por harina y sacude el exceso.",
+        "Pasa cada lomo por huevo batido durante 1-2 minutos para cubrirlo bien antes de freír.",
+        "Fríe la merluza en aceite caliente a fuego medio-alto unos 2 minutos por cada lado, sin amontonar piezas.",
+        "Escurre sobre papel absorbente y sirve con limón o mayonesa si lo tienes."
+      ],
+      "tags": ["espanola", "pescado", "merluza", "rebozado", "comida"]
+    },
+    {
+      "id": "spanish-macarrones-atun-tomate",
+      "title": "Macarrones con atún y tomate",
+      "source": {
+        "name": "Bon Viveur",
+        "url": "https://bonviveur.com/es/recetas/macarrones-atun-y-tomate",
+        "author": "Héctor Medina"
+      },
+      "mealType": "LUNCH",
+      "difficulty": "EASY",
+      "estimatedMinutes": 30,
+      "servings": 4,
+      "healthScore": 68,
+      "image": { "assetKey": "recipe_family_pasta" },
+      "requiredIngredients": ["macarron", "sal", "aceite de oliva virgen extra", "cebolla", "atun en conserva", "tomate frito", "agua"],
+      "optionalIngredients": ["queso rallado"],
+      "ingredientAmounts": {
+        "macarron": "400 g",
+        "sal": "1 pizca",
+        "aceite de oliva virgen extra": "1 cucharada",
+        "cebolla": "1/2 dulce",
+        "atun en conserva": "2 latas / 160 g",
+        "tomate frito": "350 g",
+        "agua": "para cocer",
+        "queso rallado": "50 g opcional"
+      },
+      "steps": [
+        "Hierve agua con sal y cuece 400 g de macarrones el tiempo indicado por el fabricante.",
+        "Mientras, pocha media cebolla picada con 1 cucharada de aceite hasta que quede transparente.",
+        "Escurre la pasta guardando un poco del agua de cocción y mezcla los macarrones con la cebolla pochada.",
+        "Añade 2 latas de atún escurridas y 350 g de tomate frito; ajusta la textura con un poco de agua de cocción.",
+        "Sirve caliente y termina con queso rallado solo si lo tienes."
+      ],
+      "tags": ["espanola", "pasta", "atun", "tomate", "comida"]
+    },
+    {
+      "id": "spanish-garbanzos-espinacas-tomate",
+      "title": "Garbanzos con espinacas y tomate",
+      "source": {
+        "name": "Bon Viveur",
+        "url": "https://bonviveur.com/es/recetas/garbanzos-con-espinacas",
+        "author": "Sonia Mas"
+      },
+      "mealType": "LUNCH",
+      "difficulty": "EASY",
+      "estimatedMinutes": 25,
+      "servings": 4,
+      "healthScore": 88,
+      "image": { "assetKey": "recipe_family_legumbre" },
+      "requiredIngredients": ["cebolla", "aceite de oliva", "tomate troceado en conserva", "garbanzo", "agua o caldo de verduras", "espinaca"],
+      "optionalIngredients": ["curry"],
+      "ingredientAmounts": {
+        "cebolla": "100 g",
+        "aceite de oliva": "1 cucharada",
+        "curry": "1 cucharada opcional",
+        "tomate troceado en conserva": "200 g",
+        "garbanzo": "400 g cocidos escurridos",
+        "agua o caldo de verduras": "100 ml",
+        "espinaca": "100 g hojas frescas"
+      },
+      "steps": [
+        "Pica 100 g de cebolla y sofríela con 1 cucharada de aceite a fuego medio-bajo hasta que empiece a ablandarse.",
+        "Añade curry si lo usas y 200 g de tomate troceado con su jugo; cocina 5 minutos para concentrar el sofrito.",
+        "Incorpora 400 g de garbanzos cocidos escurridos y 100 ml de agua o caldo; tapa y cuece 10 minutos a fuego suave.",
+        "Lava y corta 100 g de espinacas frescas, añádelas a la sartén y cocina sin tapa unos 3 minutos.",
+        "Remueve, prueba el punto de sal si hace falta y sirve el plato recién hecho."
+      ],
+      "tags": ["espanola", "legumbre", "garbanzo", "espinaca", "comida"]
+    }
+  ]
+}

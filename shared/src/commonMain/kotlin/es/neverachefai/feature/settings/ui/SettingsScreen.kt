@@ -50,7 +50,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import neverachefai.shared.generated.resources.Res
-import neverachefai.shared.generated.resources.ic_nc_camera
 import neverachefai.shared.generated.resources.ic_nc_microphone
 import neverachefai.shared.generated.resources.ic_nc_trash
 import neverachefai.shared.generated.resources.ref_settings_calendar_clock
@@ -63,11 +62,9 @@ import kotlin.math.roundToInt
 
 @Composable
 fun SettingsScreen(
-    cameraPermissionGranted: Boolean,
     microphonePermissionGranted: Boolean,
     expiryReminderDays: Int,
     onExpiryReminderDaysChange: (Int) -> Unit,
-    onRequestCameraPermission: () -> Unit,
     onRequestMicrophonePermission: () -> Unit,
     onReset: () -> Unit,
 ) {
@@ -91,9 +88,7 @@ fun SettingsScreen(
             PrivacyCard()
             Spacer(Modifier.height(10.dp))
             PermissionsCard(
-                cameraPermissionGranted = cameraPermissionGranted,
                 microphonePermissionGranted = microphonePermissionGranted,
-                onRequestCameraPermission = onRequestCameraPermission,
                 onRequestMicrophonePermission = onRequestMicrophonePermission,
             )
             Spacer(Modifier.height(10.dp))
@@ -231,9 +226,7 @@ private fun PrivacyCard() {
 
 @Composable
 private fun PermissionsCard(
-    cameraPermissionGranted: Boolean,
     microphonePermissionGranted: Boolean,
-    onRequestCameraPermission: () -> Unit,
     onRequestMicrophonePermission: () -> Unit,
 ) {
     Surface(
@@ -261,7 +254,7 @@ private fun PermissionsCard(
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
-                        text = "Cámara y micrófono",
+                        text = "Micrófono",
                         color = SettingsColors.Subtitle,
                         fontSize = 11.sp,
                         lineHeight = 13.sp,
@@ -285,20 +278,6 @@ private fun PermissionsCard(
                 color = SettingsColors.Card,
             ) {
                 Column {
-                    PermissionRow(
-                        title = "Permiso de cámara",
-                        description = "Para escanear alimentos",
-                        granted = cameraPermissionGranted,
-                        iconRes = Res.drawable.ic_nc_camera,
-                        onClick = onRequestCameraPermission,
-                    )
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 14.dp)
-                            .height(1.dp)
-                            .background(SettingsColors.Divider),
-                    )
                     PermissionRow(
                         title = "Permiso de micrófono",
                         description = "Para añadir por voz",
@@ -509,10 +488,12 @@ private fun ReminderSlider(
             val trackHeight = 20.dp.toPx()
             val thumbWidth = 4.dp.toPx()
             val thumbHeight = 30.dp.toPx()
+            val minActiveWidth = 34.dp.toPx()
             val centerY = size.height / 2f
             val fraction = (selectedDays - minDays).toFloat() / range.toFloat()
             val thumbX = size.width * fraction
             val corner = CornerRadius(trackHeight / 2f, trackHeight / 2f)
+            val activeWidth = if (selectedDays == minDays) minActiveWidth else thumbX.coerceAtLeast(minActiveWidth)
 
             drawRoundRect(
                 color = SettingsColors.WarningSoft,
@@ -523,7 +504,7 @@ private fun ReminderSlider(
             drawRoundRect(
                 color = SettingsColors.GreenTrack,
                 topLeft = Offset(0f, centerY - trackHeight / 2f),
-                size = Size(thumbX.coerceAtLeast(trackHeight), trackHeight),
+                size = Size(activeWidth.coerceAtMost(size.width), trackHeight),
                 cornerRadius = corner,
             )
             for (step in 1 until range) {
@@ -534,16 +515,18 @@ private fun ReminderSlider(
                     center = Offset(tickX, centerY),
                 )
             }
-            drawRoundRect(
-                color = SettingsColors.GreenTrack,
-                topLeft = Offset(thumbX - thumbWidth / 2f, centerY - thumbHeight / 2f),
-                size = Size(thumbWidth, thumbHeight),
-                cornerRadius = CornerRadius(thumbWidth / 2f, thumbWidth / 2f),
-            )
+            if (selectedDays > minDays && selectedDays < maxDays) {
+                drawRoundRect(
+                    color = SettingsColors.GreenTrack,
+                    topLeft = Offset(thumbX - thumbWidth / 2f, centerY - thumbHeight / 2f),
+                    size = Size(thumbWidth, thumbHeight),
+                    cornerRadius = CornerRadius(thumbWidth / 2f, thumbWidth / 2f),
+                )
+            }
         }
         Text(
             text = "$minDays",
-            color = if (selectedDays > minDays) Color.White else SettingsColors.GreenDark,
+            color = Color.White,
             fontSize = 12.sp,
             lineHeight = 12.sp,
             fontWeight = FontWeight.Bold,

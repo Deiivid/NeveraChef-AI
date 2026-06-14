@@ -30,9 +30,9 @@ import es.neverachefai.core.designsystem.NeveraChefColors
 import es.neverachefai.feature.navigation.MainTab
 import neverachefai.shared.generated.resources.Res
 import neverachefai.shared.generated.resources.ic_nc_chef_hat
-import neverachefai.shared.generated.resources.ic_nc_fridge
-import neverachefai.shared.generated.resources.ic_nc_settings
-import neverachefai.shared.generated.resources.ic_nc_shopping_basket
+import neverachefai.shared.generated.resources.img_bottom_inventory
+import neverachefai.shared.generated.resources.img_bottom_settings
+import neverachefai.shared.generated.resources.img_bottom_shopping
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
@@ -123,10 +123,10 @@ private fun BottomTab(
 
 private fun MainTab.iconRes(): DrawableResource {
     return when (this) {
-        MainTab.PANTRY -> Res.drawable.ic_nc_fridge
+        MainTab.PANTRY -> Res.drawable.img_bottom_inventory
         MainTab.RECIPES -> Res.drawable.ic_nc_chef_hat
-        MainTab.SHOPPING -> Res.drawable.ic_nc_shopping_basket
-        MainTab.SETTINGS -> Res.drawable.ic_nc_settings
+        MainTab.SHOPPING -> Res.drawable.img_bottom_shopping
+        MainTab.SETTINGS -> Res.drawable.img_bottom_settings
     }
 }
 

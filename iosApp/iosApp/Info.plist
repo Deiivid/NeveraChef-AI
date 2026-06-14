@@ -4,5 +4,9 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>NeveraChef usa el micrófono para añadir productos por voz.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>NeveraChef usa reconocimiento de voz local para completar productos.</string>
 </dict>
 </plist>

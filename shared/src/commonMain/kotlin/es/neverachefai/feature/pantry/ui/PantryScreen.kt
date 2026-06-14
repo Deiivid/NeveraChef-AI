@@ -49,37 +49,136 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import es.neverachefai.core.ads.NeveraChefBannerAd
 import es.neverachefai.core.designsystem.NeveraChefColors
 import es.neverachefai.feature.pantry.domain.model.PantryFood
+import es.neverachefai.feature.shopping.ui.inferShoppingIconKey
 import neverachefai.shared.generated.resources.Res
 import neverachefai.shared.generated.resources.ic_cat_beer
 import neverachefai.shared.generated.resources.ic_cat_bread
 import neverachefai.shared.generated.resources.ic_cat_canned_food
 import neverachefai.shared.generated.resources.ic_cat_cheese
 import neverachefai.shared.generated.resources.ic_cat_cleaning
-import neverachefai.shared.generated.resources.ic_cat_coffee_tea
+import neverachefai.shared.generated.resources.ic_cat_coffee
 import neverachefai.shared.generated.resources.ic_cat_eggs
 import neverachefai.shared.generated.resources.ic_cat_fish
 import neverachefai.shared.generated.resources.ic_cat_frozen
 import neverachefai.shared.generated.resources.ic_cat_fruits
 import neverachefai.shared.generated.resources.ic_cat_hygiene
 import neverachefai.shared.generated.resources.ic_cat_juice
+import neverachefai.shared.generated.resources.ic_cat_legumes
 import neverachefai.shared.generated.resources.ic_cat_meat
 import neverachefai.shared.generated.resources.ic_cat_milk
-import neverachefai.shared.generated.resources.ic_cat_oil_vinegar
+import neverachefai.shared.generated.resources.ic_cat_oil
 import neverachefai.shared.generated.resources.ic_cat_other
-import neverachefai.shared.generated.resources.ic_cat_pasta_rice_legumes
+import neverachefai.shared.generated.resources.ic_cat_pasta
 import neverachefai.shared.generated.resources.ic_cat_pets
 import neverachefai.shared.generated.resources.ic_cat_ready_meals
+import neverachefai.shared.generated.resources.ic_cat_rice
 import neverachefai.shared.generated.resources.ic_cat_sauces
 import neverachefai.shared.generated.resources.ic_cat_seafood
 import neverachefai.shared.generated.resources.ic_cat_snacks
 import neverachefai.shared.generated.resources.ic_cat_soft_drinks
 import neverachefai.shared.generated.resources.ic_cat_sweets
+import neverachefai.shared.generated.resources.ic_cat_tea
 import neverachefai.shared.generated.resources.ic_cat_vegetables
+import neverachefai.shared.generated.resources.ic_cat_vinegar
 import neverachefai.shared.generated.resources.ic_cat_water_bottle
 import neverachefai.shared.generated.resources.ic_cat_wine
 import neverachefai.shared.generated.resources.ic_cat_yogurts
+import neverachefai.shared.generated.resources.ic_bread_baguette
+import neverachefai.shared.generated.resources.ic_bread_burger
+import neverachefai.shared.generated.resources.ic_bread_hotdog
+import neverachefai.shared.generated.resources.ic_bread_sliced
+import neverachefai.shared.generated.resources.ic_cleaning_dish_soap
+import neverachefai.shared.generated.resources.ic_cleaning_laundry
+import neverachefai.shared.generated.resources.ic_fish_cod
+import neverachefai.shared.generated.resources.ic_fish_hake
+import neverachefai.shared.generated.resources.ic_fish_salmon
+import neverachefai.shared.generated.resources.ic_fish_sardine
+import neverachefai.shared.generated.resources.ic_fish_seabass
+import neverachefai.shared.generated.resources.ic_fish_trout
+import neverachefai.shared.generated.resources.ic_fish_tuna
+import neverachefai.shared.generated.resources.ic_fruit_apple
+import neverachefai.shared.generated.resources.ic_fruit_avocado
+import neverachefai.shared.generated.resources.ic_fruit_banana
+import neverachefai.shared.generated.resources.ic_fruit_blackberry
+import neverachefai.shared.generated.resources.ic_fruit_blueberry
+import neverachefai.shared.generated.resources.ic_fruit_cherry
+import neverachefai.shared.generated.resources.ic_fruit_cherimoya
+import neverachefai.shared.generated.resources.ic_fruit_coconut
+import neverachefai.shared.generated.resources.ic_fruit_date
+import neverachefai.shared.generated.resources.ic_fruit_fig
+import neverachefai.shared.generated.resources.ic_fruit_grape
+import neverachefai.shared.generated.resources.ic_fruit_grapefruit
+import neverachefai.shared.generated.resources.ic_fruit_kiwi
+import neverachefai.shared.generated.resources.ic_fruit_lemon
+import neverachefai.shared.generated.resources.ic_fruit_lime
+import neverachefai.shared.generated.resources.ic_fruit_loquat
+import neverachefai.shared.generated.resources.ic_fruit_mandarin
+import neverachefai.shared.generated.resources.ic_fruit_mango
+import neverachefai.shared.generated.resources.ic_fruit_melon
+import neverachefai.shared.generated.resources.ic_fruit_orange
+import neverachefai.shared.generated.resources.ic_fruit_papaya
+import neverachefai.shared.generated.resources.ic_fruit_peach
+import neverachefai.shared.generated.resources.ic_fruit_pear
+import neverachefai.shared.generated.resources.ic_fruit_persimmon
+import neverachefai.shared.generated.resources.ic_fruit_pineapple
+import neverachefai.shared.generated.resources.ic_fruit_plum
+import neverachefai.shared.generated.resources.ic_fruit_pomegranate
+import neverachefai.shared.generated.resources.ic_fruit_raspberry
+import neverachefai.shared.generated.resources.ic_fruit_strawberry
+import neverachefai.shared.generated.resources.ic_fruit_tomato
+import neverachefai.shared.generated.resources.ic_fruit_watermelon
+import neverachefai.shared.generated.resources.ic_hygiene_dental
+import neverachefai.shared.generated.resources.ic_hygiene_shampoo
+import neverachefai.shared.generated.resources.ic_juice_apple
+import neverachefai.shared.generated.resources.ic_juice_blueberry
+import neverachefai.shared.generated.resources.ic_juice_grape
+import neverachefai.shared.generated.resources.ic_juice_multifruit
+import neverachefai.shared.generated.resources.ic_juice_orange
+import neverachefai.shared.generated.resources.ic_juice_peach
+import neverachefai.shared.generated.resources.ic_juice_pineapple
+import neverachefai.shared.generated.resources.ic_juice_tomato
+import neverachefai.shared.generated.resources.ic_meat_beef
+import neverachefai.shared.generated.resources.ic_meat_chicken
+import neverachefai.shared.generated.resources.ic_meat_lamb
+import neverachefai.shared.generated.resources.ic_meat_pork
+import neverachefai.shared.generated.resources.ic_meat_rabbit
+import neverachefai.shared.generated.resources.ic_meat_sausage
+import neverachefai.shared.generated.resources.ic_meat_turkey
+import neverachefai.shared.generated.resources.ic_milk_lactose_free
+import neverachefai.shared.generated.resources.ic_milk_semi
+import neverachefai.shared.generated.resources.ic_milk_skimmed
+import neverachefai.shared.generated.resources.ic_milk_whole
+import neverachefai.shared.generated.resources.ic_pet_cat_food
+import neverachefai.shared.generated.resources.ic_pet_dog_food
+import neverachefai.shared.generated.resources.ic_pet_litter
+import neverachefai.shared.generated.resources.ic_pet_treats
+import neverachefai.shared.generated.resources.ic_snack_chips
+import neverachefai.shared.generated.resources.ic_snack_crackers
+import neverachefai.shared.generated.resources.ic_snack_nuts
+import neverachefai.shared.generated.resources.ic_sweets_bonbons
+import neverachefai.shared.generated.resources.ic_sweets_candy
+import neverachefai.shared.generated.resources.ic_sweets_chocolate
+import neverachefai.shared.generated.resources.ic_sweets_cookies
+import neverachefai.shared.generated.resources.ic_sweets_pastry
+import neverachefai.shared.generated.resources.ic_vegetable_artichoke
+import neverachefai.shared.generated.resources.ic_vegetable_carrot
+import neverachefai.shared.generated.resources.ic_vegetable_cauliflower
+import neverachefai.shared.generated.resources.ic_vegetable_cucumber
+import neverachefai.shared.generated.resources.ic_vegetable_eggplant
+import neverachefai.shared.generated.resources.ic_vegetable_garlic
+import neverachefai.shared.generated.resources.ic_vegetable_green_beans
+import neverachefai.shared.generated.resources.ic_vegetable_leek
+import neverachefai.shared.generated.resources.ic_vegetable_lettuce
+import neverachefai.shared.generated.resources.ic_vegetable_onion
+import neverachefai.shared.generated.resources.ic_vegetable_peas
+import neverachefai.shared.generated.resources.ic_vegetable_pepper
+import neverachefai.shared.generated.resources.ic_vegetable_potato
+import neverachefai.shared.generated.resources.ic_vegetable_pumpkin
+import neverachefai.shared.generated.resources.ic_vegetable_spinach
+import neverachefai.shared.generated.resources.ic_vegetable_zucchini
 import neverachefai.shared.generated.resources.ic_nc_arrow_back
 import neverachefai.shared.generated.resources.ic_fab_add_food
 import neverachefai.shared.generated.resources.ic_nc_freezer
@@ -123,7 +222,6 @@ fun PantryScreen(
     foods: List<PantryFoodUi>,
     expiryReminderDays: Int,
     onAdd: () -> Unit,
-    onReview: () -> Unit,
     onFoodClick: (PantryFoodUi) -> Unit,
     onDeleteFoods: (Set<String>) -> Unit,
 ) {
@@ -190,7 +288,6 @@ fun PantryScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             HeroHeader(
-                total = foods.size,
                 deleteMode = deleteMode,
                 onDeleteModeToggle = {
                     if (deleteMode) {
@@ -224,7 +321,7 @@ fun PantryScreen(
                 start = horizontalPadding,
                 top = 12.dp,
                 end = horizontalPadding,
-                bottom = 118.dp,
+                bottom = 96.dp,
             ),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
@@ -287,22 +384,29 @@ fun PantryScreen(
             }
         }
         if (!selectionMode) {
-            Surface(
-                onClick = onAdd,
-                shape = RoundedCornerShape(22.dp),
-                color = Color(0xFF0B8E5F),
+            Row(
                 modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(end = 10.dp, bottom = 8.dp)
-                    .size(54.dp),
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(start = horizontalPadding, end = horizontalPadding, bottom = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        painter = painterResource(Res.drawable.ic_fab_add_food),
-                        contentDescription = "Añadir alimento",
-                        tint = Color.White,
-                        modifier = Modifier.size(42.dp),
-                    )
+                InventoryBannerAd(modifier = Modifier.weight(1f))
+                Surface(
+                    onClick = onAdd,
+                    shape = RoundedCornerShape(22.dp),
+                    color = Color(0xFF0B8E5F),
+                    modifier = Modifier.size(54.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            painter = painterResource(Res.drawable.ic_fab_add_food),
+                            contentDescription = "Añadir alimento",
+                            tint = Color.White,
+                            modifier = Modifier.size(42.dp),
+                        )
+                    }
                 }
             }
         }
@@ -310,8 +414,23 @@ fun PantryScreen(
 }
 
 @Composable
+private fun InventoryBannerAd(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(50.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        NeveraChefBannerAd(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp),
+        )
+    }
+}
+
+@Composable
 private fun HeroHeader(
-    total: Int,
     deleteMode: Boolean,
     onDeleteModeToggle: () -> Unit,
 ) {
@@ -331,34 +450,28 @@ private fun HeroHeader(
                 .padding(start = 10.dp, bottom = 10.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Text(
-                text = "Tu inventario",
-                color = Color(0xFF032E1F),
-                fontSize = 28.sp,
-                lineHeight = 31.sp,
-                fontWeight = FontWeight.Bold,
-            )
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text(
-                    text = "$total alimentos",
-                    color = Color(0xFF093B2B),
-                    fontSize = 16.sp,
+                    text = "Tu inventario",
+                    color = Color(0xFF032E1F),
+                    fontSize = 28.sp,
+                    lineHeight = 31.sp,
                     fontWeight = FontWeight.Bold,
                 )
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(38.dp)
                         .background(
-                            if (deleteMode) Color(0xFFFFE2E2) else Color(0xFFFFF5F2),
-                            RoundedCornerShape(10.dp),
+                            if (deleteMode) Color(0xFFFFE2E2) else Color.White,
+                            CircleShape,
                         )
                         .border(
                             1.dp,
                             if (deleteMode) Color(0xFFFFB8B8) else Color(0xFFF1DCD5),
-                            RoundedCornerShape(10.dp),
+                            CircleShape,
                         )
                         .clickable(onClick = onDeleteModeToggle),
                     contentAlignment = Alignment.Center,
@@ -367,7 +480,7 @@ private fun HeroHeader(
                         painter = painterResource(Res.drawable.ic_nc_trash),
                         contentDescription = if (deleteMode) "Cancelar borrado" else "Seleccionar para borrar",
                         tint = Color(0xFFE82222),
-                        modifier = Modifier.size(22.dp),
+                        modifier = Modifier.size(20.dp),
                     )
                 }
             }
@@ -866,48 +979,211 @@ internal fun PantryFood.toPantryFoodUi(): PantryFoodUi {
         expiryDateIso = expiryDateIso,
         addedDateIso = addedDateIso,
         iconKey = iconKey,
-        iconRes = pantryIconResource(iconKey),
+        iconRes = pantryIconResource(iconKey = iconKey, category = category, name = name),
     )
 }
 
-internal fun pantryIconResource(iconKey: String): DrawableResource {
-    val normalizedKey = when (iconKey.trim().lowercase()) {
-        "egg", "eggs", "huevo", "huevos" -> "eggs"
-        "spinach", "verdura", "verduras", "vegetable" -> "vegetables"
-        "fruit", "fruta", "frutas" -> "fruits"
-        "proteina", "proteína", "protein", "carne" -> "meat"
-        "rice", "lentils", "grain", "cereal", "grano", "granos" -> "grains"
-        else -> iconKey.trim().lowercase()
+internal fun pantryIconResource(
+    iconKey: String,
+    category: String = "",
+    name: String = "",
+): DrawableResource {
+    val normalizedText = listOf(iconKey, category, name).joinToString(" ").normalizeCategoryText()
+    val rawIconKey = iconKey.trim().lowercase()
+    val normalizedKey = when (rawIconKey) {
+        "meat_beef", "meat_pork", "meat_chicken", "meat_turkey", "meat_lamb", "meat_rabbit", "meat_sausage" -> rawIconKey
+        "fish_hake", "fish_cod", "fish_seabass", "fish_salmon", "fish_tuna", "fish_sardine", "fish_trout" -> rawIconKey
+        "fruit_tomato", "fruit_apple", "fruit_pear", "fruit_banana", "fruit_orange", "fruit_mandarin",
+        "fruit_lemon", "fruit_lime", "fruit_grapefruit", "fruit_strawberry", "fruit_raspberry", "fruit_blackberry",
+        "fruit_blueberry", "fruit_grape", "fruit_kiwi", "fruit_melon", "fruit_watermelon",
+        "fruit_peach", "fruit_plum", "fruit_cherry", "fruit_pomegranate", "fruit_persimmon",
+        "fruit_loquat", "fruit_fig", "fruit_date", "fruit_coconut", "fruit_cherimoya",
+        "fruit_mango", "fruit_papaya", "fruit_pineapple", "fruit_avocado" -> rawIconKey
+        "vegetable_potato", "vegetable_onion", "vegetable_carrot", "vegetable_pepper", "vegetable_zucchini",
+        "vegetable_cucumber", "vegetable_lettuce", "vegetable_spinach", "vegetable_garlic", "vegetable_peas",
+        "vegetable_green_beans", "vegetable_eggplant", "vegetable_pumpkin", "vegetable_artichoke",
+        "vegetable_leek", "vegetable_cauliflower" -> rawIconKey
+        "bread_baguette", "bread_sliced", "bread_burger", "bread_hotdog",
+        "milk_whole", "milk_semi", "milk_lactose_free", "milk_skimmed",
+        "juice_orange", "juice_pineapple", "juice_peach", "juice_blueberry", "juice_multifruit", "juice_apple",
+        "juice_tomato", "juice_grape",
+        "sweets_chocolate", "sweets_candy", "sweets_bonbons", "sweets_cookies", "sweets_pastry",
+        "snack_chips", "snack_nuts", "snack_crackers",
+        "pet_dog_food", "pet_cat_food", "pet_litter", "pet_treats",
+        "cleaning_laundry", "cleaning_dish_soap", "hygiene_shampoo", "hygiene_dental" -> rawIconKey
+        else -> inferShoppingIconKey(normalizedText) ?: when {
+            normalizedText.containsAny("macarron", "espagueti", "spaghetti", "pasta", "fideo") -> "pasta"
+            normalizedText.containsAny("arroz", "rice", "cereal") -> "rice"
+            normalizedText.containsAny("lenteja", "garbanzo", "alubia", "legumbre", "legumbres") -> "legumes"
+            normalizedText.containsAny("cafe", "coffee") -> "coffee"
+            normalizedText.containsToken("te", "infusion", "tea") -> "tea"
+            normalizedText.containsAny("vinagre", "vinegar") -> "vinegar"
+            normalizedText.containsAny("aceite", "oil") -> "oil"
+            else -> when (iconKey.trim().lowercase()) {
+                "egg", "eggs", "huevo", "huevos" -> "eggs"
+                "spinach", "verdura", "verduras", "vegetable" -> "vegetables"
+                "fruit", "fruta", "frutas" -> "fruits"
+                "proteina", "proteína", "protein", "carne" -> "meat"
+                "rice" -> "rice"
+                "pasta" -> "pasta"
+                "lentils", "legumes" -> "legumes"
+                "grain", "cereal", "grano", "granos", "grains" -> "rice"
+                "coffee_tea" -> "coffee"
+                "oil_vinegar" -> "oil"
+                else -> iconKey.trim().lowercase()
+            }
+        }
     }
     return when (normalizedKey) {
         "fruits" -> Res.drawable.ic_cat_fruits
+        "fruit_tomato" -> Res.drawable.ic_fruit_tomato
+        "fruit_apple" -> Res.drawable.ic_fruit_apple
+        "fruit_pear" -> Res.drawable.ic_fruit_pear
+        "fruit_banana" -> Res.drawable.ic_fruit_banana
+        "fruit_orange" -> Res.drawable.ic_fruit_orange
+        "fruit_mandarin" -> Res.drawable.ic_fruit_mandarin
+        "fruit_lemon" -> Res.drawable.ic_fruit_lemon
+        "fruit_lime" -> Res.drawable.ic_fruit_lime
+        "fruit_grapefruit" -> Res.drawable.ic_fruit_grapefruit
+        "fruit_strawberry" -> Res.drawable.ic_fruit_strawberry
+        "fruit_raspberry" -> Res.drawable.ic_fruit_raspberry
+        "fruit_blackberry" -> Res.drawable.ic_fruit_blackberry
+        "fruit_blueberry" -> Res.drawable.ic_fruit_blueberry
+        "fruit_grape" -> Res.drawable.ic_fruit_grape
+        "fruit_kiwi" -> Res.drawable.ic_fruit_kiwi
+        "fruit_melon" -> Res.drawable.ic_fruit_melon
+        "fruit_watermelon" -> Res.drawable.ic_fruit_watermelon
+        "fruit_peach" -> Res.drawable.ic_fruit_peach
+        "fruit_plum" -> Res.drawable.ic_fruit_plum
+        "fruit_cherry" -> Res.drawable.ic_fruit_cherry
+        "fruit_pomegranate" -> Res.drawable.ic_fruit_pomegranate
+        "fruit_persimmon" -> Res.drawable.ic_fruit_persimmon
+        "fruit_loquat" -> Res.drawable.ic_fruit_loquat
+        "fruit_fig" -> Res.drawable.ic_fruit_fig
+        "fruit_date" -> Res.drawable.ic_fruit_date
+        "fruit_coconut" -> Res.drawable.ic_fruit_coconut
+        "fruit_cherimoya" -> Res.drawable.ic_fruit_cherimoya
+        "fruit_mango" -> Res.drawable.ic_fruit_mango
+        "fruit_papaya" -> Res.drawable.ic_fruit_papaya
+        "fruit_pineapple" -> Res.drawable.ic_fruit_pineapple
+        "fruit_avocado" -> Res.drawable.ic_fruit_avocado
         "vegetables" -> Res.drawable.ic_cat_vegetables
         "meat" -> Res.drawable.ic_cat_meat
+        "meat_beef" -> Res.drawable.ic_meat_beef
+        "meat_pork" -> Res.drawable.ic_meat_pork
+        "meat_chicken" -> Res.drawable.ic_meat_chicken
+        "meat_turkey" -> Res.drawable.ic_meat_turkey
+        "meat_lamb" -> Res.drawable.ic_meat_lamb
+        "meat_rabbit" -> Res.drawable.ic_meat_rabbit
+        "meat_sausage" -> Res.drawable.ic_meat_sausage
         "fish" -> Res.drawable.ic_cat_fish
+        "fish_hake" -> Res.drawable.ic_fish_hake
+        "fish_cod" -> Res.drawable.ic_fish_cod
+        "fish_seabass" -> Res.drawable.ic_fish_seabass
+        "fish_salmon" -> Res.drawable.ic_fish_salmon
+        "fish_tuna" -> Res.drawable.ic_fish_tuna
+        "fish_sardine" -> Res.drawable.ic_fish_sardine
+        "fish_trout" -> Res.drawable.ic_fish_trout
         "seafood" -> Res.drawable.ic_cat_seafood
+        "vegetable_potato" -> Res.drawable.ic_vegetable_potato
+        "vegetable_onion" -> Res.drawable.ic_vegetable_onion
+        "vegetable_carrot" -> Res.drawable.ic_vegetable_carrot
+        "vegetable_pepper" -> Res.drawable.ic_vegetable_pepper
+        "vegetable_zucchini" -> Res.drawable.ic_vegetable_zucchini
+        "vegetable_cucumber" -> Res.drawable.ic_vegetable_cucumber
+        "vegetable_lettuce" -> Res.drawable.ic_vegetable_lettuce
+        "vegetable_spinach" -> Res.drawable.ic_vegetable_spinach
+        "vegetable_garlic" -> Res.drawable.ic_vegetable_garlic
+        "vegetable_peas" -> Res.drawable.ic_vegetable_peas
+        "vegetable_green_beans" -> Res.drawable.ic_vegetable_green_beans
+        "vegetable_eggplant" -> Res.drawable.ic_vegetable_eggplant
+        "vegetable_pumpkin" -> Res.drawable.ic_vegetable_pumpkin
+        "vegetable_artichoke" -> Res.drawable.ic_vegetable_artichoke
+        "vegetable_leek" -> Res.drawable.ic_vegetable_leek
+        "vegetable_cauliflower" -> Res.drawable.ic_vegetable_cauliflower
         "bread" -> Res.drawable.ic_cat_bread
+        "bread_baguette" -> Res.drawable.ic_bread_baguette
+        "bread_sliced" -> Res.drawable.ic_bread_sliced
+        "bread_burger" -> Res.drawable.ic_bread_burger
+        "bread_hotdog" -> Res.drawable.ic_bread_hotdog
         "milk" -> Res.drawable.ic_cat_milk
+        "milk_whole" -> Res.drawable.ic_milk_whole
+        "milk_semi" -> Res.drawable.ic_milk_semi
+        "milk_lactose_free" -> Res.drawable.ic_milk_lactose_free
+        "milk_skimmed" -> Res.drawable.ic_milk_skimmed
         "yogurts" -> Res.drawable.ic_cat_yogurts
         "cheese" -> Res.drawable.ic_cat_cheese
         "eggs" -> Res.drawable.ic_cat_eggs
-        "grains" -> Res.drawable.ic_cat_pasta_rice_legumes
+        "pasta" -> Res.drawable.ic_cat_pasta
+        "rice" -> Res.drawable.ic_cat_rice
+        "legumes" -> Res.drawable.ic_cat_legumes
         "canned_food" -> Res.drawable.ic_cat_canned_food
         "frozen" -> Res.drawable.ic_cat_frozen
         "water" -> Res.drawable.ic_cat_water_bottle
         "soft_drinks" -> Res.drawable.ic_cat_soft_drinks
         "juice" -> Res.drawable.ic_cat_juice
+        "juice_orange" -> Res.drawable.ic_juice_orange
+        "juice_pineapple" -> Res.drawable.ic_juice_pineapple
+        "juice_peach" -> Res.drawable.ic_juice_peach
+        "juice_blueberry" -> Res.drawable.ic_juice_blueberry
+        "juice_multifruit" -> Res.drawable.ic_juice_multifruit
+        "juice_apple" -> Res.drawable.ic_juice_apple
+        "juice_tomato" -> Res.drawable.ic_juice_tomato
+        "juice_grape" -> Res.drawable.ic_juice_grape
         "wine" -> Res.drawable.ic_cat_wine
         "beer" -> Res.drawable.ic_cat_beer
-        "coffee_tea" -> Res.drawable.ic_cat_coffee_tea
+        "coffee" -> Res.drawable.ic_cat_coffee
+        "tea" -> Res.drawable.ic_cat_tea
         "snacks" -> Res.drawable.ic_cat_snacks
+        "snack_chips" -> Res.drawable.ic_snack_chips
+        "snack_nuts" -> Res.drawable.ic_snack_nuts
+        "snack_crackers" -> Res.drawable.ic_snack_crackers
         "sweets" -> Res.drawable.ic_cat_sweets
+        "sweets_chocolate" -> Res.drawable.ic_sweets_chocolate
+        "sweets_candy" -> Res.drawable.ic_sweets_candy
+        "sweets_bonbons" -> Res.drawable.ic_sweets_bonbons
+        "sweets_cookies" -> Res.drawable.ic_sweets_cookies
+        "sweets_pastry" -> Res.drawable.ic_sweets_pastry
         "sauces" -> Res.drawable.ic_cat_sauces
-        "oil_vinegar" -> Res.drawable.ic_cat_oil_vinegar
+        "oil" -> Res.drawable.ic_cat_oil
+        "vinegar" -> Res.drawable.ic_cat_vinegar
         "ready_meals" -> Res.drawable.ic_cat_ready_meals
         "cleaning" -> Res.drawable.ic_cat_cleaning
+        "cleaning_laundry" -> Res.drawable.ic_cleaning_laundry
+        "cleaning_dish_soap" -> Res.drawable.ic_cleaning_dish_soap
         "hygiene" -> Res.drawable.ic_cat_hygiene
+        "hygiene_shampoo" -> Res.drawable.ic_hygiene_shampoo
+        "hygiene_dental" -> Res.drawable.ic_hygiene_dental
         "pets" -> Res.drawable.ic_cat_pets
+        "pet_dog_food" -> Res.drawable.ic_pet_dog_food
+        "pet_cat_food" -> Res.drawable.ic_pet_cat_food
+        "pet_litter" -> Res.drawable.ic_pet_litter
+        "pet_treats" -> Res.drawable.ic_pet_treats
         "other" -> Res.drawable.ic_cat_other
         else -> Res.drawable.ic_cat_other
     }
+}
+
+private fun String.normalizeCategoryText(): String {
+    return lowercase()
+        .map { char ->
+            when (char) {
+                'á', 'à', 'ä', 'â' -> 'a'
+                'é', 'è', 'ë', 'ê' -> 'e'
+                'í', 'ì', 'ï', 'î' -> 'i'
+                'ó', 'ò', 'ö', 'ô' -> 'o'
+                'ú', 'ù', 'ü', 'û' -> 'u'
+                else -> char
+            }
+        }
+        .joinToString("")
+}
+
+private fun String.containsAny(vararg values: String): Boolean {
+    return values.any { it in this }
+}
+
+private fun String.containsToken(vararg values: String): Boolean {
+    val tokens = split(Regex("[^a-z0-9]+")).filter { it.isNotBlank() }.toSet()
+    return values.any { it in tokens }
 }

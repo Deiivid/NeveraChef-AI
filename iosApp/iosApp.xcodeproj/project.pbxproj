@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		A1B2C3D4E5F60718293A4B5C /* LiteRTLM in Frameworks */ = {isa = PBXBuildFile; productRef = B1B2C3D4E5F60718293A4B5C /* LiteRTLM */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		EA2326CACC568F136A09F2B1 /* NeveraChefAI.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NeveraChefAI.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -41,6 +45,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A1B2C3D4E5F60718293A4B5C /* LiteRTLM in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -85,6 +90,7 @@
 			);
 			name = iosApp;
 			packageProductDependencies = (
+				B1B2C3D4E5F60718293A4B5C /* LiteRTLM */,
 			);
 			productName = iosApp;
 			productReference = EA2326CACC568F136A09F2B1 /* NeveraChefAI.app */;
@@ -114,6 +120,9 @@
 			);
 			mainGroup = FEFE8A9DD555AE5476693171;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				C1B2C3D4E5F60718293A4B5C /* XCRemoteSwiftPackageReference "LiteRT-LM" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = AB608574F459E0E000B99CD6 /* Products */;
 			projectDirPath = "";
@@ -165,6 +174,25 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		C1B2C3D4E5F60718293A4B5C /* XCRemoteSwiftPackageReference "LiteRT-LM" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google-ai-edge/LiteRT-LM";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.12.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		B1B2C3D4E5F60718293A4B5C /* LiteRTLM */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C1B2C3D4E5F60718293A4B5C /* XCRemoteSwiftPackageReference "LiteRT-LM" */;
+			productName = LiteRTLM;
+		};
+/* End XCSwiftPackageProductDependency section */
 
 /* Begin XCBuildConfiguration section */
 		47DDEDF09A217D671B1D3561 /* Debug */ = {

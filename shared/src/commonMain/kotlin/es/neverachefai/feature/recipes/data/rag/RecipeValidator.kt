@@ -11,14 +11,18 @@ internal class RecipeValidator {
     ): Recipe {
         val availableTokens = pantryFoods.flatMap { IngredientNormalizer.tokensFor(it.name) }.toSet()
         val validatedUsed = recipe.ingredientsUsed.filter { ingredient ->
-            IngredientNormalizer.tokensFor(ingredient).any { it in availableTokens }
+            IngredientNormalizer.matchesAvailable(ingredient, availableTokens)
+        }
+        val validatedMissing = recipe.missingIngredients.filterNot { ingredient ->
+            IngredientNormalizer.matchesAvailable(ingredient, availableTokens)
         }
         return recipe.copy(
             estimatedMinutes = recipe.estimatedMinutes.coerceAtMost(maxMinutes),
             ingredientsUsed = validatedUsed,
+            missingIngredients = validatedMissing,
             matchScore = recipe.matchScore.coerceIn(1, 100),
             healthScore = recipe.healthScore.coerceIn(1, 100),
-            steps = recipe.steps.take(5).filter { it.isNotBlank() },
+            steps = recipe.steps.take(5).filter { it.instruction.isNotBlank() },
         )
     }
 }

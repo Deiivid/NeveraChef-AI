@@ -26,7 +26,6 @@ fun AddIngredientsScreen(onBack: () -> Unit) {
             backgroundColor = NeveraChefColors.AccentSoft,
         )
         ScreenCard(title = "Voz", description = "Pendiente Sprint 5")
-        ScreenCard(title = "Cámara", description = "Pendiente Sprint 5")
         Button(modifier = Modifier.fillMaxWidth(), onClick = onBack) { Text("Volver") }
     }
 }

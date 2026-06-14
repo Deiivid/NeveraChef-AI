@@ -7,16 +7,17 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -27,13 +28,17 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import es.neverachefai.feature.recipes.domain.model.Difficulty
 import es.neverachefai.feature.recipes.domain.model.Recipe
 import es.neverachefai.feature.recipes.domain.model.RecipeGenerationResult
@@ -54,47 +59,259 @@ private val RecipeLine = Color(0xFFE8DDCA)
 private val RecipeMuted = Color(0xFF596273)
 private val DifficultyMedium = Color(0xFFF4B000)
 private val DifficultyHard = Color(0xFFD94A38)
+private const val FreeRecipeLimit = 12
+private const val RewardRecipeBatchSize = 20
 
 @Composable
 fun RecipeResultsScreen(
     result: RecipeGenerationResult?,
+    unlockedRecipeIds: Set<String> = emptySet(),
+    showGeneratedRecipeNotice: Boolean,
+    onGeneratedRecipeNoticeDismiss: () -> Unit,
+    onRecipeInfoClick: () -> Unit,
     onOpenDetail: (Recipe) -> Unit,
+    onWatchRewardedAdForRecipes: (List<String>) -> Unit = {},
     onGenerateAgain: () -> Unit,
 ) {
     val recipes = result?.recipes.orEmpty()
+    val freeRecipes = recipes.take(FreeRecipeLimit)
+    val extraRecipes = recipes.drop(FreeRecipeLimit)
+    val unlockedExtraRecipes = extraRecipes.filter { it.id in unlockedRecipeIds }
+    val remainingExtraRecipes = extraRecipes.filterNot { it.id in unlockedRecipeIds }
+    val rewardBatchRecipes = remainingExtraRecipes.take(RewardRecipeBatchSize)
+    val rewardBatchRecipeIds = rewardBatchRecipes.map { it.id }
+    val visibleRecipes = freeRecipes + unlockedExtraRecipes
+    val availableRecipes = visibleRecipes.filter { it.missingIngredients.isEmpty() }
+    val almostReadyRecipes = visibleRecipes.filter { it.missingIngredients.size in 1..2 }
+    val shoppingNeededRecipes = visibleRecipes.filter { it.missingIngredients.size > 2 }
+    val featuredRecipe = availableRecipes.firstOrNull() ?: almostReadyRecipes.firstOrNull()
 
-    Column(
+    if (result != null && showGeneratedRecipeNotice) {
+        GeneratedRecipeNoticeDialog(
+            onDismiss = onGeneratedRecipeNoticeDismiss,
+        )
+    }
+
+    LazyColumn(
         modifier = Modifier
-            .fillMaxWidth()
-            .verticalScroll(rememberScrollState()),
+            .fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 8.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        RecipesHeroHeader()
-        SummaryRow(
-            pantryFoodCount = result?.pantryFoodCount ?: 0,
-            recipeCount = recipes.size,
-        )
-        FilterRow()
+        item { RecipesHeroHeader(onInfoClick = onRecipeInfoClick) }
+        item {
+            SummaryRow(
+                pantryFoodCount = result?.pantryFoodCount ?: 0,
+                recipeCount = recipes.size,
+            )
+        }
+        item { FilterRow() }
 
         if (recipes.isEmpty()) {
-            EmptyResultsCard(onGenerateAgain = onGenerateAgain)
+            item { EmptyResultsCard(onGenerateAgain = onGenerateAgain) }
         } else {
-            FeaturedRecipeCard(
-                recipe = recipes.first(),
-                onClick = { onOpenDetail(recipes.first()) },
+            if (featuredRecipe != null) {
+                item {
+                    FeaturedRecipeCard(
+                        recipe = featuredRecipe,
+                        onClick = { onOpenDetail(featuredRecipe) },
+                    )
+                }
+            }
+            recipeSection(
+                title = "Disponibles",
+                subtitle = "Puedes cocinarlas con lo que tienes.",
+                recipes = availableRecipes.filterNot { it.id == featuredRecipe?.id },
+                onOpenDetail = onOpenDetail,
             )
-            recipes.drop(1).take(3).forEach { recipe ->
-                CompactRecipeRow(
-                    recipe = recipe,
-                    onClick = { onOpenDetail(recipe) },
+            recipeSection(
+                title = "Casi listas",
+                subtitle = "Faltan 1 o 2 ingredientes.",
+                recipes = almostReadyRecipes.filterNot { it.id == featuredRecipe?.id },
+                onOpenDetail = onOpenDetail,
+            )
+            recipeSection(
+                title = "Para completar",
+                subtitle = "Necesitan varios ingredientes más.",
+                recipes = shoppingNeededRecipes.filterNot { it.id == featuredRecipe?.id },
+                onOpenDetail = onOpenDetail,
+            )
+            if (rewardBatchRecipes.isNotEmpty()) {
+                item {
+                    MoreRecipesGateCard(
+                        visibleLimit = FreeRecipeLimit,
+                        onUnlock = { onWatchRewardedAdForRecipes(rewardBatchRecipeIds) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.recipeSection(
+    title: String,
+    subtitle: String,
+    recipes: List<Recipe>,
+    onOpenDetail: (Recipe) -> Unit,
+) {
+    if (recipes.isEmpty()) return
+    item {
+        RecipeSectionHeader(
+            title = title,
+            subtitle = subtitle,
+            count = recipes.size,
+        )
+    }
+    items(
+        items = recipes,
+        key = { it.id },
+    ) { recipe ->
+        CompactRecipeRow(
+            recipe = recipe,
+            onClick = { onOpenDetail(recipe) },
+        )
+    }
+}
+
+@Composable
+private fun MoreRecipesGateCard(
+    visibleLimit: Int,
+    onUnlock: () -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, RecipeLine, RoundedCornerShape(24.dp)),
+        colors = CardDefaults.cardColors(containerColor = RecipeCream),
+        shape = RoundedCornerShape(24.dp),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .background(Color(0xFFFFEDD3), RoundedCornerShape(16.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(Res.drawable.ic_nc_chef_hat),
+                    contentDescription = null,
+                    tint = RecipeGreen,
+                    modifier = Modifier.size(22.dp),
                 )
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
+                Text(
+                    text = "Ver más recetas",
+                    color = RecipeInk,
+                    fontSize = 17.sp,
+                    lineHeight = 19.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = "Ahora ves $visibleLimit. Con un vídeo puedes ver 20 más.",
+                    color = RecipeMuted,
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp,
+                )
+            }
+            Button(
+                modifier = Modifier.height(42.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = RecipeGreen),
+                onClick = onUnlock,
+            ) {
+                Text("Vídeo", fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
 }
 
 @Composable
-private fun RecipesHeroHeader() {
+private fun GeneratedRecipeNoticeDialog(onDismiss: () -> Unit) {
+    val shape = RoundedCornerShape(30.dp)
+    Dialog(
+        onDismissRequest = onDismiss,
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .shadow(10.dp, shape)
+                .border(1.dp, RecipeLine, shape),
+            colors = CardDefaults.cardColors(containerColor = RecipeCream),
+            shape = shape,
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 26.dp, vertical = 28.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(18.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(82.dp)
+                        .background(RecipeMint, RoundedCornerShape(41.dp))
+                        .border(1.dp, Color(0xFFDCEBDD), RoundedCornerShape(41.dp)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_nc_chef_hat),
+                        contentDescription = null,
+                        tint = RecipeGreen,
+                        modifier = Modifier.size(39.dp),
+                    )
+                }
+                Text(
+                    text = "Recetas sugeridas",
+                    color = RecipeInk,
+                    fontSize = 31.sp,
+                    fontWeight = FontWeight.Bold,
+                    lineHeight = 34.sp,
+                    textAlign = TextAlign.Center,
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.68f)
+                        .height(1.dp)
+                        .background(Color(0xFFDCEBDD), RoundedCornerShape(1.dp)),
+                )
+                Text(
+                    text = "Las recetas salen de una base local estructurada. El cálculo de ingredientes, raciones y orden es determinista. Revísalas antes de cocinar.",
+                    color = RecipeMuted,
+                    fontSize = 17.sp,
+                    lineHeight = 25.sp,
+                    textAlign = TextAlign.Center,
+                )
+                Button(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = RecipeGreen),
+                    onClick = onDismiss,
+                ) {
+                    Text(
+                        text = "Entendido",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecipesHeroHeader(
+    onInfoClick: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -113,27 +330,54 @@ private fun RecipesHeroHeader() {
                 lineHeight = 37.sp,
             )
             Row(
-                modifier = Modifier
-                    .background(RecipeMint, RoundedCornerShape(18.dp))
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Icon(
-                    painter = painterResource(Res.drawable.ic_nc_chef_hat),
-                    contentDescription = null,
-                    tint = RecipeGreen,
-                    modifier = Modifier.size(16.dp),
-                )
-                Text(
-                    "IA local privada",
-                    color = RecipeGreen,
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                )
+                Row(
+                    modifier = Modifier
+                        .background(RecipeMint, RoundedCornerShape(18.dp))
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_nc_chef_hat),
+                        contentDescription = null,
+                        tint = RecipeGreen,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Text(
+                        "IA local privada",
+                        color = RecipeGreen,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+                RecipeInfoButton(onClick = onInfoClick)
             }
         }
         HeroFoodCluster()
+    }
+}
+
+@Composable
+private fun RecipeInfoButton(onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(34.dp)
+            .clip(CircleShape)
+            .background(Color.White)
+            .border(1.dp, Color(0xFFE9DED3), CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = "i",
+            color = RecipeGreen,
+            fontSize = 16.sp,
+            lineHeight = 16.sp,
+            fontWeight = FontWeight.Bold,
+        )
     }
 }
 
@@ -229,6 +473,46 @@ private fun FilterRow() {
 }
 
 @Composable
+private fun RecipeSectionHeader(
+    title: String,
+    subtitle: String,
+    count: Int,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 4.dp, start = 2.dp, end = 2.dp),
+        verticalAlignment = Alignment.Bottom,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                color = RecipeInk,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                lineHeight = 24.sp,
+            )
+            Text(
+                text = subtitle,
+                color = RecipeMuted,
+                fontSize = 13.sp,
+                lineHeight = 16.sp,
+            )
+        }
+        Text(
+            text = "$count",
+            color = RecipeGreen,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier
+                .background(RecipeMint, RoundedCornerShape(16.dp))
+                .padding(horizontal = 12.dp, vertical = 7.dp),
+        )
+    }
+}
+
+@Composable
 private fun FeaturedRecipeCard(
     recipe: Recipe,
     onClick: () -> Unit,
@@ -251,8 +535,6 @@ private fun FeaturedRecipeCard(
                 recipe = recipe,
                 width = 142,
                 height = 142,
-                imageWidth = 150,
-                imageHeight = 118,
             )
             Column(
                 modifier = Modifier.weight(1f),
@@ -269,6 +551,8 @@ private fun FeaturedRecipeCard(
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     TimeMetaChip("${recipe.estimatedMinutes} min")
+                    TimeMetaChip("${recipe.servings} rac.")
+                    MatchMetaChip("${recipe.matchScore}%")
                     DifficultyMetaChip(recipe.difficulty)
                 }
                 Text(
@@ -286,16 +570,28 @@ private fun FeaturedRecipeCard(
                     colors = ButtonDefaults.buttonColors(containerColor = RecipeGreen),
                     onClick = onClick,
                 ) {
-                    Text("Ver receta", fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Icon(
-                        painter = painterResource(Res.drawable.ic_nc_arrow_back),
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier
-                            .size(17.dp)
-                            .graphicsLayer { rotationZ = 180f },
-                    )
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("Ver receta", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.CenterEnd)
+                                .size(32.dp)
+                                .background(Color.White.copy(alpha = 0.16f), RoundedCornerShape(16.dp)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                painter = painterResource(Res.drawable.ic_nc_arrow_back),
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier
+                                    .size(17.dp)
+                                    .graphicsLayer { rotationZ = 180f },
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -323,10 +619,8 @@ private fun CompactRecipeRow(
         ) {
             RecipeImageTile(
                 recipe = recipe,
-                width = 126,
-                height = 74,
-                imageWidth = 112,
-                imageHeight = 68,
+                width = 112,
+                height = 78,
                 radius = 14,
             )
             Column(
@@ -338,23 +632,92 @@ private fun CompactRecipeRow(
                     color = RecipeInk,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    maxLines = 1,
+                    lineHeight = 20.sp,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                     TimeMetaChip("${recipe.estimatedMinutes} min")
+                    MatchMetaChip("${recipe.matchScore}%")
                     DifficultyMetaChip(recipe.difficulty)
                 }
             }
-            Text(
-                text = ">",
-                color = Color(0xFF747A86),
-                fontSize = 26.sp,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier
-                    .padding(start = 2.dp)
-                    .width(18.dp),
+        }
+    }
+}
+
+@Composable
+private fun LockedRecipeRow(
+    recipe: Recipe,
+    unlocked: Boolean,
+    onUnlock: () -> Unit,
+    onOpen: () -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(2.dp, RoundedCornerShape(20.dp))
+            .border(1.dp, if (unlocked) Color(0xFFDCEBDD) else RecipeLine, RoundedCornerShape(20.dp))
+            .clickable(enabled = unlocked, onClick = onOpen),
+        colors = CardDefaults.cardColors(containerColor = if (unlocked) Color.White else RecipeCream),
+        shape = RoundedCornerShape(20.dp),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            RecipeImageTile(
+                recipe = recipe,
+                width = 96,
+                height = 72,
+                radius = 14,
             )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(7.dp),
+            ) {
+                Text(
+                    recipe.title,
+                    color = RecipeInk,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    lineHeight = 19.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    TimeMetaChip("${recipe.estimatedMinutes} min")
+                    MatchMetaChip("${recipe.matchScore}%")
+                }
+                Text(
+                    text = if (unlocked) {
+                        "Desbloqueada"
+                    } else {
+                        "${recipe.missingIngredients.size} ingredientes faltan"
+                    },
+                    color = if (unlocked) RecipeGreen else RecipeMuted,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Button(
+                modifier = Modifier.height(40.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (unlocked) RecipeGreen else Color(0xFFFFEDD3),
+                    contentColor = if (unlocked) Color.White else RecipeGreen,
+                ),
+                onClick = if (unlocked) onOpen else onUnlock,
+            ) {
+                Text(
+                    text = if (unlocked) "Ver" else "Vídeo",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
         }
     }
 }
@@ -391,21 +754,22 @@ private fun RecipeImageTile(
     recipe: Recipe,
     width: Int,
     height: Int,
-    imageWidth: Int,
-    imageHeight: Int,
     radius: Int = 24,
 ) {
+    val shape = RoundedCornerShape(radius.dp)
     Box(
         modifier = Modifier
             .size(width = width.dp, height = height.dp)
-            .background(Color(0xFFFFF6E8), RoundedCornerShape(radius.dp))
-            .border(1.dp, Color(0xFFE7E2D9), RoundedCornerShape(radius.dp)),
+            .clip(shape)
+            .background(Color(0xFFFFF6E8), shape)
+            .border(1.dp, Color(0xFFE7E2D9), shape),
         contentAlignment = Alignment.Center,
     ) {
         Image(
             painter = painterResource(recipeImage(recipe)),
             contentDescription = null,
-            modifier = Modifier.size(width = imageWidth.dp, height = imageHeight.dp),
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
         )
     }
 }
@@ -457,6 +821,26 @@ private fun TimeMetaChip(text: String) {
 }
 
 @Composable
+private fun MatchMetaChip(text: String) {
+    Row(
+        modifier = Modifier
+            .background(Color(0xFFEAF3ED), RoundedCornerShape(18.dp))
+            .border(1.dp, Color(0xFFD8EAE2), RoundedCornerShape(18.dp))
+            .padding(horizontal = 9.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+    ) {
+        Text(
+            text = text,
+            color = RecipeGreen,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
 private fun DifficultyMetaChip(difficulty: Difficulty) {
     val level = difficultyLevel(difficulty)
     val color = difficultyColor(difficulty)
@@ -469,11 +853,14 @@ private fun DifficultyMetaChip(difficulty: Difficulty) {
         horizontalArrangement = Arrangement.spacedBy(7.dp),
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.CenterVertically) {
-            repeat(level) {
+            repeat(3) { index ->
                 Box(
                     modifier = Modifier
                         .size(width = 5.dp, height = 16.dp)
-                        .background(color, RoundedCornerShape(4.dp)),
+                        .background(
+                            color = if (index < level) color else Color(0xFFE5E5E0),
+                            shape = RoundedCornerShape(4.dp),
+                        ),
                 )
             }
         }

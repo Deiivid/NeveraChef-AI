@@ -36,7 +36,6 @@ import neverachefai.shared.generated.resources.Res
 import neverachefai.shared.generated.resources.ic_nc_check_square
 import neverachefai.shared.generated.resources.ic_nc_chef_hat
 import neverachefai.shared.generated.resources.ic_nc_microphone
-import neverachefai.shared.generated.resources.ic_nc_scan
 import neverachefai.shared.generated.resources.ic_nc_shopping_basket
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
@@ -94,7 +93,7 @@ fun OnboardingScreen(onContinue: () -> Unit) {
                     OnboardingStep(
                         number = "1",
                         title = "Añade alimentos como te venga mejor",
-                        body = "Manual, voz o cámara. Tú decides antes de guardar.",
+                        body = "Manual o por voz. Tú decides antes de guardar.",
                         numberBackground = NeveraChefColors.AccentSoft,
                         numberColor = NeveraChefColors.Blue,
                         compact = compactHeight,
@@ -220,8 +219,8 @@ private fun OnboardingStoryCard(
                 .padding(top = if (compact) 20.dp else 30.dp),
         )
         FloatingTag(
-            text = "Foto",
-            iconRes = Res.drawable.ic_nc_scan,
+            text = "Manual",
+            iconRes = Res.drawable.ic_nc_check_square,
             background = Color.White,
             contentColor = NeveraChefColors.Ink,
             modifier = Modifier

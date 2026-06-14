@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -31,6 +32,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -48,33 +50,36 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 import neverachefai.shared.generated.resources.Res
 import neverachefai.shared.generated.resources.ic_cat_beer
 import neverachefai.shared.generated.resources.ic_cat_bread
 import neverachefai.shared.generated.resources.ic_cat_canned_food
 import neverachefai.shared.generated.resources.ic_cat_cheese
 import neverachefai.shared.generated.resources.ic_cat_cleaning
-import neverachefai.shared.generated.resources.ic_cat_coffee_tea
+import neverachefai.shared.generated.resources.ic_cat_coffee
 import neverachefai.shared.generated.resources.ic_cat_eggs
 import neverachefai.shared.generated.resources.ic_cat_fish
 import neverachefai.shared.generated.resources.ic_cat_frozen
 import neverachefai.shared.generated.resources.ic_cat_fruits
 import neverachefai.shared.generated.resources.ic_cat_hygiene
 import neverachefai.shared.generated.resources.ic_cat_juice
+import neverachefai.shared.generated.resources.ic_cat_legumes
 import neverachefai.shared.generated.resources.ic_cat_meat
 import neverachefai.shared.generated.resources.ic_cat_milk
-import neverachefai.shared.generated.resources.ic_cat_oil_vinegar
+import neverachefai.shared.generated.resources.ic_cat_oil
 import neverachefai.shared.generated.resources.ic_cat_other
-import neverachefai.shared.generated.resources.ic_cat_pasta_rice_legumes
+import neverachefai.shared.generated.resources.ic_cat_pasta
 import neverachefai.shared.generated.resources.ic_cat_pets
 import neverachefai.shared.generated.resources.ic_cat_ready_meals
+import neverachefai.shared.generated.resources.ic_cat_rice
 import neverachefai.shared.generated.resources.ic_cat_sauces
 import neverachefai.shared.generated.resources.ic_cat_seafood
 import neverachefai.shared.generated.resources.ic_cat_snacks
 import neverachefai.shared.generated.resources.ic_cat_soft_drinks
 import neverachefai.shared.generated.resources.ic_cat_sweets
+import neverachefai.shared.generated.resources.ic_cat_tea
 import neverachefai.shared.generated.resources.ic_cat_vegetables
+import neverachefai.shared.generated.resources.ic_cat_vinegar
 import neverachefai.shared.generated.resources.ic_cat_water_bottle
 import neverachefai.shared.generated.resources.ic_cat_wine
 import neverachefai.shared.generated.resources.ic_cat_yogurts
@@ -102,6 +107,14 @@ enum class AddProductTarget {
     Inventory,
 }
 
+enum class GuidedVoiceAddPhase {
+    ProductName,
+    Quantity,
+    Location,
+    Category,
+    Ready,
+}
+
 data class AddShoppingProductUiState(
     val selectedMode: AddShoppingMode = AddShoppingMode.Manual,
     val productName: String = "",
@@ -110,6 +123,11 @@ data class AddShoppingProductUiState(
     val destination: String = "Frutas",
     val location: String = "nevera",
     val previewProducts: List<String> = emptyList(),
+    val voicePhase: GuidedVoiceAddPhase = GuidedVoiceAddPhase.ProductName,
+    val voicePrompt: String = "Paso 1: dime el nombre del producto",
+    val voiceCategoryProvided: Boolean = false,
+    val voiceQuantityProvided: Boolean = false,
+    val voiceLocationProvided: Boolean = false,
 )
 
 private val NcGreen = Color(0xFF00563C)
@@ -132,8 +150,8 @@ fun AddShoppingProductScreen(
     onQuantityModeChange: (String) -> Unit,
     onDestinationChange: (String) -> Unit,
     onLocationChange: (String) -> Unit,
-    onVoiceClick: () -> Unit,
-    onCameraClick: () -> Unit,
+    onProductNameVoiceClick: () -> Unit,
+    onGuidedVoiceClick: () -> Unit,
     onBackClick: () -> Unit,
     onAddToShoppingListClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -149,6 +167,13 @@ fun AddShoppingProductScreen(
         isWeightMode && showKgInField -> "${gramsToKgInput(weightValue)} kg"
         isWeightMode -> "$weightValue gr"
         else -> quantity.toString()
+    }
+    val inferredCategory = inferShoppingCategoryLabel(state.productName)
+
+    LaunchedEffect(state.productName, inferredCategory) {
+        if (inferredCategory != null && inferredCategory != state.destination) {
+            onDestinationChange(inferredCategory)
+        }
     }
 
     Scaffold(
@@ -174,7 +199,7 @@ fun AddShoppingProductScreen(
                 ProductNameField(
                     productName = state.productName,
                     onProductNameChange = onProductNameChange,
-                    onVoiceClick = onVoiceClick,
+                    onVoiceClick = onProductNameVoiceClick,
                 )
             }
             item {
@@ -215,9 +240,11 @@ fun AddShoppingProductScreen(
             }
             item {
                 VoiceEntryCard(
+                    prompt = state.voicePrompt,
+                    active = state.selectedMode == AddShoppingMode.Voice,
                     onClick = {
                         onModeSelected(AddShoppingMode.Voice)
-                        onVoiceClick()
+                        onGuidedVoiceClick()
                     },
                 )
             }
@@ -387,13 +414,20 @@ private fun CategorySection(
     selectedCategory: String,
     onDestinationChange: (String) -> Unit,
 ) {
+    val categories = shoppingCategories()
+    val listState = rememberLazyListState()
+    LaunchedEffect(selectedCategory) {
+        val selectedIndex = categories.indexOfFirst { it.label == selectedCategory }
+        if (selectedIndex >= 0) listState.animateScrollToItem(selectedIndex)
+    }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
+            state = listState,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(end = 8.dp),
         ) {
-            items(shoppingCategories()) { category ->
+            items(categories) { category ->
                 val selected = selectedCategory == category.label
                 CategoryCard(
                     category = category,
@@ -467,20 +501,7 @@ private fun QuantitySelectorCard(
             Spacer(modifier = Modifier.width(12.dp))
             OutlinedTextField(
                 value = quantityFieldValue,
-                onValueChange = { raw ->
-                    if (isWeightMode && showKgInField) {
-                        val normalized = raw.replace(',', '.').filter { it.isDigit() || it == '.' }
-                        val kg = normalized.toDoubleOrNull() ?: 0.0
-                        val grams = (kg * 1000.0).roundToInt().coerceAtLeast(0)
-                        onQuantityChange(grams.toString())
-                    } else if (isWeightMode) {
-                        onQuantityChange(raw.filter(Char::isDigit))
-                    } else {
-                        val sanitized = raw.filter(Char::isDigit)
-                        val units = sanitized.toIntOrNull()?.coerceAtLeast(1) ?: 1
-                        onQuantityChange(units.toString())
-                    }
-                },
+                onValueChange = onQuantityChange,
                 modifier = Modifier
                     .width(if (isWeightMode) 118.dp else 92.dp)
                     .height(54.dp),
@@ -548,12 +569,21 @@ private fun LocationSelectorRow(
 }
 
 @Composable
-private fun VoiceEntryCard(onClick: () -> Unit) {
+private fun VoiceEntryCard(
+    prompt: String,
+    active: Boolean,
+    onClick: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
-            .background(NcMutedBg)
+            .background(if (active) Color(0xFFE6F3EC) else NcMutedBg)
+            .border(
+                width = if (active) 1.dp else 0.dp,
+                color = if (active) Color(0xFFB9DEC8) else Color.Transparent,
+                shape = RoundedCornerShape(18.dp),
+            )
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -578,15 +608,17 @@ private fun VoiceEntryCard(onClick: () -> Unit) {
                 .weight(1f),
         ) {
             Text(
-                text = "Añadir por voz",
+                text = if (active) "Continuar por voz" else "Añadir por voz",
                 color = Color(0xFF113E2E),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                text = "Nombre, cantidad, categoría y ubicación",
+                text = prompt,
                 color = NcSubtitle,
                 fontSize = 12.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
         }
         Text(text = "›", color = NcGreen, fontSize = 26.sp)
@@ -780,12 +812,9 @@ private fun shoppingCategories() = listOf(
     CategoryUi("Yogures", Res.drawable.ic_cat_yogurts, Color(0xFFEFF6FE), Color(0xFF3A6EA5)),
     CategoryUi("Queso", Res.drawable.ic_cat_cheese, Color(0xFFFFF8DD), Color(0xFFAF8B00)),
     CategoryUi("Huevos", Res.drawable.ic_cat_eggs, Color(0xFFFBF1E7), Color(0xFF9E6A2A)),
-    CategoryUi(
-        "Pasta/Arroz",
-        Res.drawable.ic_cat_pasta_rice_legumes,
-        Color(0xFFF9F3E3),
-        Color(0xFF9A7B31)
-    ),
+    CategoryUi("Pasta", Res.drawable.ic_cat_pasta, Color(0xFFF9F3E3), Color(0xFF9A7B31)),
+    CategoryUi("Arroz", Res.drawable.ic_cat_rice, Color(0xFFF9F3E3), Color(0xFF9A7B31)),
+    CategoryUi("Legumbres", Res.drawable.ic_cat_legumes, Color(0xFFF7F0E6), Color(0xFF8B6F33)),
     CategoryUi("Conservas", Res.drawable.ic_cat_canned_food, Color(0xFFF3EFEA), Color(0xFF7D6A56)),
     CategoryUi("Congelados", Res.drawable.ic_cat_frozen, Color(0xFFEAF3FC), Color(0xFF2F6FA6)),
     CategoryUi("Agua", Res.drawable.ic_cat_water_bottle, Color(0xFFEAF3FC), Color(0xFF2F6FA6)),
@@ -793,16 +822,13 @@ private fun shoppingCategories() = listOf(
     CategoryUi("Zumo", Res.drawable.ic_cat_juice, Color(0xFFFFF3E8), Color(0xFFB56A25)),
     CategoryUi("Vino", Res.drawable.ic_cat_wine, Color(0xFFFAEEF2), Color(0xFF91506A)),
     CategoryUi("Cerveza", Res.drawable.ic_cat_beer, Color(0xFFFFF7E1), Color(0xFFA7801B)),
-    CategoryUi("Cafe/Te", Res.drawable.ic_cat_coffee_tea, Color(0xFFF5F0EA), Color(0xFF7A5D3B)),
+    CategoryUi("Café", Res.drawable.ic_cat_coffee, Color(0xFFF5F0EA), Color(0xFF7A5D3B)),
+    CategoryUi("Té", Res.drawable.ic_cat_tea, Color(0xFFF0F6E9), Color(0xFF5C7F35)),
     CategoryUi("Snacks", Res.drawable.ic_cat_snacks, Color(0xFFFFF7E7), Color(0xFFA67A1F)),
     CategoryUi("Dulces", Res.drawable.ic_cat_sweets, Color(0xFFFDEDF0), Color(0xFFB65D73)),
     CategoryUi("Salsas", Res.drawable.ic_cat_sauces, Color(0xFFFDEDED), Color(0xFFA35353)),
-    CategoryUi(
-        "Aceite/Vinagre",
-        Res.drawable.ic_cat_oil_vinegar,
-        Color(0xFFF8F7E6),
-        Color(0xFF8A8331)
-    ),
+    CategoryUi("Aceite", Res.drawable.ic_cat_oil, Color(0xFFF8F7E6), Color(0xFF8A8331)),
+    CategoryUi("Vinagre", Res.drawable.ic_cat_vinegar, Color(0xFFF7F1E8), Color(0xFF7C5C36)),
     CategoryUi(
         "Platos listos",
         Res.drawable.ic_cat_ready_meals,

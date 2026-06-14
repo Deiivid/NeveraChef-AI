@@ -69,7 +69,7 @@ internal class LocalRecipeRetriever(
         ingredient: String,
         availableTokens: Set<String>,
     ): Boolean {
-        return IngredientNormalizer.tokensFor(ingredient).any { it in availableTokens }
+        return IngredientNormalizer.matchesAvailable(ingredient, availableTokens)
     }
 
     private fun RecipeKnowledgeCard.allIngredients(): List<String> {

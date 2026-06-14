@@ -23,9 +23,11 @@ internal object IngredientNormalizer {
         "alubias blancas" to "alubia",
         "alubias pintas" to "alubia",
         "frijoles" to "alubia",
-        "macarrones" to "pasta",
-        "espaguetis" to "pasta",
-        "tallarines" to "pasta",
+        "macarron" to "macarron",
+        "macarrón" to "macarron",
+        "macarrones" to "macarron",
+        "espaguetis" to "espagueti",
+        "tallarines" to "tallarin",
         "fideo" to "fideo",
         "fideos" to "fideo",
         "fideua" to "fideo",
@@ -55,8 +57,8 @@ internal object IngredientNormalizer {
         "canela" to "canela",
         "filetes de pescado" to "pescado",
         "filete de pescado" to "pescado",
-        "merluza" to "pescado",
-        "bacalao" to "pescado",
+        "merluzas" to "merluza",
+        "bacalaos" to "bacalao",
         "bonito" to "atun",
         "sardinas" to "sardina",
         "boquerones" to "boqueron",
@@ -103,6 +105,58 @@ internal object IngredientNormalizer {
         "naranjas" to "naranja",
         "manzanas" to "manzana",
         "peras" to "pera",
+        "perejiles" to "perejil",
+    )
+
+    private val ingredientGroups = mapOf(
+        "verdura" to setOf(
+            "pimiento",
+            "zanahoria",
+            "cebolla",
+            "guisante",
+            "calabacin",
+            "judia verde",
+            "alcachofa",
+            "tomate",
+            "berenjena",
+            "calabaza",
+            "acelga",
+            "espinaca",
+            "col",
+            "coliflor",
+            "puerro",
+            "nabo",
+            "patata",
+            "pepino",
+            "lechuga",
+        ),
+        "fruta" to setOf(
+            "platano",
+            "naranja",
+            "manzana",
+            "pera",
+            "fresa",
+            "arandano",
+            "limon",
+            "melon",
+            "sandia",
+            "uva",
+            "kiwi",
+        ),
+        "fideo o arroz" to setOf("fideo", "arroz"),
+        "agua o caldo vegetal" to setOf("agua", "caldo"),
+        "agua o caldo de verduras" to setOf("agua", "caldo"),
+        "embutido" to setOf(
+            "chorizo",
+            "morcilla",
+            "panceta",
+            "jamon",
+            "salchicha",
+            "longaniza",
+            "sobrasada",
+            "bacon",
+            "beicon",
+        ),
     )
 
     private val ignoredTokens = setOf(
@@ -122,6 +176,9 @@ internal object IngredientNormalizer {
         "uds",
         "unidad",
         "unidades",
+        "en",
+        "o",
+        "y",
     )
 
     fun canonicalName(raw: String): String {
@@ -148,6 +205,19 @@ internal object IngredientNormalizer {
         val rawTokens = tokensFor(raw)
         val ingredientTokens = tokensFor(ingredient)
         return ingredientTokens.any { it in rawTokens } || rawTokens.any { it in ingredientTokens }
+    }
+
+    fun matchesAvailable(
+        ingredient: String,
+        availableTokens: Set<String>,
+    ): Boolean {
+        val canonical = canonicalName(ingredient)
+        val ingredientTokens = tokensFor(ingredient)
+        val groupTokens = (ingredientGroups[canonical].orEmpty() + ingredientTokens.flatMap { ingredientGroups[it].orEmpty() }).toSet()
+        val primaryToken = ingredientTokens.firstOrNull()
+        return canonical in availableTokens ||
+            primaryToken?.let { it in availableTokens } == true ||
+            groupTokens.any { it in availableTokens }
     }
 
     private fun normalizeText(raw: String): String {

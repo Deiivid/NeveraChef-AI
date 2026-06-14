@@ -1,12 +1,16 @@
 package es.neverachefai.feature.recipes.domain.usecase
 
 import es.neverachefai.feature.pantry.domain.model.PantryFood
+import es.neverachefai.feature.recipes.data.local.LocalRecipeSeedData
+import es.neverachefai.feature.recipes.domain.model.Difficulty
+import es.neverachefai.feature.recipes.domain.model.MealType
+import es.neverachefai.feature.recipes.domain.model.RecipeCategory
 import es.neverachefai.feature.recipes.domain.model.RecipeGenerationMode
 import es.neverachefai.feature.recipes.domain.model.RecipeGenerationRequest
-import es.neverachefai.feature.recipes.domain.model.RecipeImageSourceType
+import es.neverachefai.feature.recipes.domain.model.RecipeTag
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNotEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -14,88 +18,124 @@ class GenerateRecipesUseCaseTest {
     private val useCase = GenerateRecipesUseCase()
 
     @Test
-    fun focusedFoodPrioritizesMatchingRecipes() {
-        val result = useCase(
-            RecipeGenerationRequest(
-                pantryFoods = listOf(
-                    food(id = "1", name = "Huevos"),
-                    food(id = "2", name = "Plátano"),
-                    food(id = "3", name = "Fresas"),
-                ),
-                focusFoodId = "2",
-                maxMinutes = 20,
-            ),
-        )
-
-        assertTrue(result.recipes.isNotEmpty())
-        assertTrue(result.recipes.first().ingredientsUsed.contains("platano"))
-        assertEquals(RecipeGenerationMode.LOCAL_RAG, result.recipes.first().generationMode)
+    fun loadsFullRecipeCatalogFromRecipesMdCategories() {
+        assertEquals(226, LocalRecipeSeedData.categoryEntryCount)
+        assertEquals(201, LocalRecipeSeedData.recipes.size)
+        assertTrue(LocalRecipeSeedData.recipes.any { RecipeCategory.KIDS in it.categories })
     }
 
     @Test
-    fun maxMinutesFiltersSlowRecipes() {
+    fun calculatesMatchAndSeparatesAvailableAndMissingIngredients() {
         val result = useCase(
             RecipeGenerationRequest(
                 pantryFoods = listOf(
-                    food(id = "1", name = "Patatas"),
-                    food(id = "2", name = "Huevos"),
-                ),
-                maxMinutes = 12,
-            ),
-        )
-
-        assertTrue(result.recipes.isNotEmpty())
-        assertTrue(result.recipes.all { it.estimatedMinutes <= 12 })
-        assertNotEquals("Patata salteada con huevo", result.recipes.first().title)
-    }
-
-    @Test
-    fun generatedRecipesCarryLocalImageMetadata() {
-        val result = useCase(
-            RecipeGenerationRequest(
-                pantryFoods = listOf(
-                    food(id = "1", name = "Arroz"),
-                    food(id = "2", name = "Pollo"),
+                    food(id = "1", name = "Macarrones"),
+                    food(id = "2", name = "Atún"),
+                    food(id = "3", name = "Tomate frito"),
                 ),
                 maxMinutes = 30,
             ),
         )
 
-        assertTrue(result.recipes.isNotEmpty())
-        assertTrue(result.recipes.all { it.image.assetKey.isNotBlank() })
-        assertTrue(result.recipes.all { it.image.licenseName.isNotBlank() })
-        assertTrue(
-            result.recipes.any {
-                it.image.sourceType == RecipeImageSourceType.WIKIMEDIA_COMMONS ||
-                    it.image.sourceType == RecipeImageSourceType.OPENVERSE
-            },
-        )
+        val recipe = assertNotNull(result.recipes.firstOrNull { it.title == "Macarrones con atún y tomate" })
+        assertEquals(60, recipe.matchScore)
+        assertTrue(recipe.ingredientsUsed.contains("Macarrones"))
+        assertTrue(recipe.ingredientsUsed.contains("Atún en conserva"))
+        assertTrue(recipe.missingIngredients.contains("Aceite de oliva"))
+        assertEquals(RecipeGenerationMode.LOCAL_SEED, recipe.generationMode)
+        assertFalse(result.aiStatus.localLlmReady)
     }
 
     @Test
-    fun seafoodRecipesUseMoreSpecificImageFamilies() {
+    fun scalesServingsByRuleOfThreeWithoutLinearTimeScaling() {
         val result = useCase(
             RecipeGenerationRequest(
                 pantryFoods = listOf(
-                    food(id = "1", name = "Huevos"),
+                    food(id = "1", name = "Macarrones"),
+                    food(id = "2", name = "Atún"),
+                    food(id = "3", name = "Tomate frito"),
+                    food(id = "4", name = "Aceite de oliva"),
+                    food(id = "5", name = "Sal"),
+                ),
+                maxMinutes = 30,
+                targetServings = 2,
+            ),
+        )
+
+        val recipe = assertNotNull(result.recipes.firstOrNull { it.title == "Macarrones con atún y tomate" })
+        assertEquals(2, recipe.servings)
+        assertEquals("200 g", recipe.ingredientAmounts["Macarrones"])
+        assertEquals("80 g", recipe.ingredientAmounts["Atún en conserva"])
+        assertEquals(25, recipe.estimatedMinutes)
+    }
+
+    @Test
+    fun ordersRecommendationsByMatchAndExpiringIngredients() {
+        val result = useCase(
+            RecipeGenerationRequest(
+                pantryFoods = listOf(
+                    food(id = "1", name = "Garbanzos", expiryLabel = "Caduca en 2 días"),
+                    food(id = "2", name = "Espinacas"),
+                    food(id = "3", name = "Tomate"),
+                    food(id = "4", name = "Macarrones"),
+                    food(id = "5", name = "Atún"),
+                ),
+                maxMinutes = 30,
+                maxResults = 5,
+            ),
+        )
+
+        assertEquals("Garbanzos con espinacas", result.recipes.first().title)
+        assertTrue(result.recommendations.first().expiringSoonIngredients.any { it.name == "Garbanzos cocidos" })
+    }
+
+    @Test
+    fun appliesBasicFilters() {
+        val result = useCase(
+            RecipeGenerationRequest(
+                pantryFoods = listOf(
+                    food(id = "1", name = "Macarrones"),
+                    food(id = "2", name = "Atún"),
+                    food(id = "3", name = "Tomate frito"),
+                ),
+                maxMinutes = 30,
+                mealTypes = setOf(MealType.LUNCH),
+                difficulties = setOf(Difficulty.EASY),
+                categories = setOf(RecipeCategory.PASTA),
+                tags = setOf(RecipeTag.PASTA),
+            ),
+        )
+
+        assertTrue(result.recipes.isNotEmpty())
+        assertTrue(result.recipes.all { it.category == RecipeCategory.PASTA })
+        assertTrue(result.recipes.all { it.difficulty == Difficulty.EASY })
+        assertTrue(result.recipes.all { RecipeTag.PASTA in it.tags })
+    }
+
+    @Test
+    fun concreteIngredientsDoNotMatchGenericNames() {
+        val result = useCase(
+            RecipeGenerationRequest(
+                pantryFoods = listOf(
+                    food(id = "1", name = "Pasta"),
                     food(id = "2", name = "Pescado"),
-                    food(id = "3", name = "Fideos"),
+                    food(id = "3", name = "Huevo"),
                 ),
                 maxMinutes = 30,
-                maxResults = 10,
+                maxResults = 250,
             ),
         )
 
-        val tortillaBacalao = assertNotNull(result.recipes.firstOrNull { it.title == "Tortilla de bacalao sencilla" })
-        val fideua = assertNotNull(result.recipes.firstOrNull { it.title == "Fideuá sencilla de pescado" })
-        assertEquals("recipe_tortilla_bacalao", tortillaBacalao.imageKey)
-        assertEquals("recipe_fideua_pescado", fideua.imageKey)
-        assertTrue(fideua.ingredientsUsed.contains("fideo"))
+        val pasta = assertNotNull(result.recipes.firstOrNull { it.title == "Macarrones con atún y tomate" })
+        val merluza = assertNotNull(result.recipes.firstOrNull { it.title == "Merluza rebozada" })
+        assertTrue(pasta.missingIngredients.contains("Macarrones"))
+        assertTrue(merluza.missingIngredients.contains("Merluza"))
     }
 
     private fun food(
         id: String,
         name: String,
+        expiryLabel: String? = null,
     ): PantryFood {
         return PantryFood(
             id = id,
@@ -105,7 +145,7 @@ class GenerateRecipesUseCaseTest {
             quantityUnit = "unidades",
             category = "other",
             locationKey = "fridge",
-            expiryLabel = null,
+            expiryLabel = expiryLabel,
             iconKey = "other",
         )
     }

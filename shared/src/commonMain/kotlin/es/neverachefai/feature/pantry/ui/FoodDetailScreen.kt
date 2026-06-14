@@ -65,6 +65,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.window.Dialog
 import es.neverachefai.core.designsystem.NeveraChefColors
+import es.neverachefai.feature.shopping.ui.inferShoppingIconKey
+import es.neverachefai.feature.shopping.ui.shoppingCategoryIconKeyForProductIcon
 import neverachefai.shared.generated.resources.Res
 import neverachefai.shared.generated.resources.ic_detail_quantity
 import neverachefai.shared.generated.resources.ic_detail_weight
@@ -168,6 +170,10 @@ fun FoodDetailScreen(
         "gr"
     }
     val quantityLabel = formatQuantityLabel(quantityValue, quantityMode, resolvedWeightUnit)
+    val inferredProductIconKey = inferShoppingIconKey(editedName)
+    val previewProductIconKey = inferredProductIconKey
+        ?.takeIf { shoppingCategoryIconKeyForProductIcon(it) == selectedCategory.iconKey }
+        ?: if (isEditing) selectedCategory.iconKey else food.iconKey
     val previewFood = food.copy(
         name = editedName,
         quantity = quantityLabel,
@@ -175,8 +181,8 @@ fun FoodDetailScreen(
         location = selectedLocation,
         expiryDateIso = expiryDateIso,
         addedDateIso = addedDateIso,
-        iconKey = selectedCategory.iconKey,
-        iconRes = pantryIconResource(selectedCategory.iconKey),
+        iconKey = previewProductIconKey,
+        iconRes = pantryIconResource(previewProductIconKey, selectedCategory.label, editedName),
     )
 
     val expiryText = formatDisplayDate(previewFood.expiryDateIso) ?: previewFood.expiryLabel ?: "Sin fecha"
@@ -198,6 +204,7 @@ fun FoodDetailScreen(
         Header(onBack = onBack)
         ProductCard(
             selectedCategory = selectedCategory,
+            productIconKey = previewFood.iconKey,
             productName = previewFood.name,
             isEditing = isEditing,
             onProductNameChange = { editedName = it },
@@ -806,6 +813,7 @@ private fun CalendarDayCell(
 @Composable
 private fun ProductCard(
     selectedCategory: CategoryOption,
+    productIconKey: String,
     productName: String,
     isEditing: Boolean,
     onProductNameChange: (String) -> Unit,
@@ -827,7 +835,7 @@ private fun ProductCard(
                 horizontalArrangement = Arrangement.spacedBy(18.dp),
             ) {
                 Image(
-                    painter = painterResource(pantryIconResource(selectedCategory.iconKey)),
+                    painter = painterResource(pantryIconResource(productIconKey, selectedCategory.label, productName)),
                     contentDescription = selectedCategory.label,
                     modifier = Modifier.size(editImageSize),
                 )
@@ -2257,7 +2265,7 @@ private fun normalizeCategoryKey(iconKey: String, category: String): String {
         val normalized = when (candidate) {
             "fruits", "fruta", "frutas" -> "fruits"
             "vegetables", "verdura", "verduras" -> "vegetables"
-            "meat", "carne" -> "meat"
+            "meat", "carne", "meat_beef", "meat_pork", "meat_chicken", "meat_turkey", "meat_lamb", "meat_rabbit", "meat_sausage" -> "meat"
             "fish", "pescado" -> "fish"
             "seafood", "marisco" -> "seafood"
             "bread", "pan" -> "bread"
@@ -2265,7 +2273,10 @@ private fun normalizeCategoryKey(iconKey: String, category: String): String {
             "yogurts", "yogures" -> "yogurts"
             "cheese", "queso" -> "cheese"
             "eggs", "huevos" -> "eggs"
-            "grains", "pasta/arroz", "arroz", "pasta" -> "grains"
+            "pasta/arroz", "grains" -> "rice"
+            "pasta" -> "pasta"
+            "arroz", "rice", "cereal" -> "rice"
+            "legumbres", "legumbre", "lentejas", "lenteja", "garbanzos", "garbanzo", "alubias", "alubia", "legumes" -> "legumes"
             "canned_food", "conservas" -> "canned_food"
             "frozen", "congelados" -> "frozen"
             "water", "agua" -> "water"
@@ -2273,11 +2284,15 @@ private fun normalizeCategoryKey(iconKey: String, category: String): String {
             "juice", "zumo" -> "juice"
             "wine", "vino" -> "wine"
             "beer", "cerveza" -> "beer"
-            "coffee_tea", "cafe/te", "café/te" -> "coffee_tea"
+            "coffee_tea", "cafe/te", "café/te" -> "coffee"
+            "cafe", "café", "coffee" -> "coffee"
+            "te", "té", "tea", "infusion", "infusión" -> "tea"
             "snacks" -> "snacks"
             "sweets", "dulces" -> "sweets"
             "sauces", "salsas" -> "sauces"
-            "oil_vinegar", "aceite/vinagre" -> "oil_vinegar"
+            "oil_vinegar", "aceite/vinagre" -> "oil"
+            "aceite", "oil" -> "oil"
+            "vinagre", "vinegar" -> "vinegar"
             "ready_meals", "platos listos" -> "ready_meals"
             "cleaning", "limpieza" -> "cleaning"
             "hygiene", "higiene" -> "hygiene"
@@ -2301,7 +2316,9 @@ private fun detailCategoryOptions(): List<CategoryOption> {
         CategoryOption("Yogures", "yogurts"),
         CategoryOption("Queso", "cheese"),
         CategoryOption("Huevos", "eggs"),
-        CategoryOption("Pasta/Arroz", "grains"),
+        CategoryOption("Pasta", "pasta"),
+        CategoryOption("Arroz", "rice"),
+        CategoryOption("Legumbres", "legumes"),
         CategoryOption("Conservas", "canned_food"),
         CategoryOption("Congelados", "frozen"),
         CategoryOption("Agua", "water"),
@@ -2309,11 +2326,13 @@ private fun detailCategoryOptions(): List<CategoryOption> {
         CategoryOption("Zumo", "juice"),
         CategoryOption("Vino", "wine"),
         CategoryOption("Cerveza", "beer"),
-        CategoryOption("Café/Té", "coffee_tea"),
+        CategoryOption("Café", "coffee"),
+        CategoryOption("Té", "tea"),
         CategoryOption("Snacks", "snacks"),
         CategoryOption("Dulces", "sweets"),
         CategoryOption("Salsas", "sauces"),
-        CategoryOption("Aceite/Vinagre", "oil_vinegar"),
+        CategoryOption("Aceite", "oil"),
+        CategoryOption("Vinagre", "vinegar"),
         CategoryOption("Platos listos", "ready_meals"),
         CategoryOption("Limpieza", "cleaning"),
         CategoryOption("Higiene", "hygiene"),
@@ -2334,7 +2353,9 @@ private fun categoryTheme(iconKey: String): Palette {
         "yogurts" -> Palette(Color(0xFFEFF6FE), Color(0xFF3A6EA5))
         "cheese" -> Palette(Color(0xFFFFF8DD), Color(0xFFAF8B00))
         "eggs" -> Palette(Color(0xFFFBF1E7), Color(0xFF9E6A2A))
-        "grains" -> Palette(Color(0xFFF9F3E3), Color(0xFF9A7B31))
+        "pasta" -> Palette(Color(0xFFF9F3E3), Color(0xFF9A7B31))
+        "rice" -> Palette(Color(0xFFF9F3E3), Color(0xFF9A7B31))
+        "legumes" -> Palette(Color(0xFFF7F0E6), Color(0xFF8B6F33))
         "canned_food" -> Palette(Color(0xFFF3EFEA), Color(0xFF7D6A56))
         "frozen" -> Palette(Color(0xFFEAF3FC), Color(0xFF2F6FA6))
         "water" -> Palette(Color(0xFFEAF3FC), Color(0xFF2F6FA6))
@@ -2342,11 +2363,13 @@ private fun categoryTheme(iconKey: String): Palette {
         "juice" -> Palette(Color(0xFFFFF3E8), Color(0xFFB56A25))
         "wine" -> Palette(Color(0xFFFAEEF2), Color(0xFF91506A))
         "beer" -> Palette(Color(0xFFFFF7E1), Color(0xFFA7801B))
-        "coffee_tea" -> Palette(Color(0xFFF4EFE6), Color(0xFF8A6230))
+        "coffee" -> Palette(Color(0xFFF4EFE6), Color(0xFF8A6230))
+        "tea" -> Palette(Color(0xFFF0F6E9), Color(0xFF5C7F35))
         "snacks" -> Palette(Color(0xFFF8F0E8), Color(0xFFB06D35))
         "sweets" -> Palette(Color(0xFFFCEFEF), Color(0xFFB85A5A))
         "sauces" -> Palette(Color(0xFFF9F3E6), Color(0xFF9F6F27))
-        "oil_vinegar" -> Palette(Color(0xFFF7F2E0), Color(0xFF8D6B26))
+        "oil" -> Palette(Color(0xFFF7F2E0), Color(0xFF8D6B26))
+        "vinegar" -> Palette(Color(0xFFF7F1E8), Color(0xFF7C5C36))
         "ready_meals" -> Palette(Color(0xFFF1F5EE), Color(0xFF5D8651))
         "cleaning" -> Palette(Color(0xFFF2F1F7), Color(0xFF6F5FA7))
         "hygiene" -> Palette(Color(0xFFF6F2F8), Color(0xFF9A6FAE))
