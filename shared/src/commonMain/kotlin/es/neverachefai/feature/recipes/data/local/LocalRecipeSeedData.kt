@@ -619,6 +619,7 @@ internal object LocalRecipeSeedData {
         return when {
             "atun a la plancha" in title -> "recipe_atun_plancha"
             "batido" in title && "platano" in title && "yogur" in title -> "recipe_batido_platano_yogur"
+            "huevos revueltos con pavo" in title -> "recipe_eggs_scrambled_pavo"
             "huevos revueltos" in title || "revuelto de huevos" in title -> "recipe_eggs_scrambled"
             "lentejas con arroz" in title -> "recipe_lentejas_arroz"
             "carbonara" in title && ("macarron" in title || "espagueti" in title || "pasta" in title) -> "recipe_pasta_carbonara"
@@ -626,6 +627,7 @@ internal object LocalRecipeSeedData {
             "gulas" in title && "gambas" in title && (
                 "pasta" in title || "macarron" in title || "espagueti" in title || "tallarin" in title
                 ) -> "recipe_pasta_gulas_gambas"
+            "tortilla francesa con queso" in title -> "recipe_tortilla_francesa_queso"
             "tortilla francesa" in title -> "recipe_tortilla_francesa"
             "huevo" in title || "tortilla" in title || "revuelto" in title -> "recipe_family_tortilla"
             "fideua" in title || "fideuá" in title || "pasta" in title || "macarron" in title ||

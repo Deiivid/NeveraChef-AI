@@ -9,11 +9,13 @@ internal fun recipeDrawableResource(recipe: Recipe): DrawableResource {
         "recipe_atun_plancha" -> Res.drawable.recipe_atun_plancha
         "recipe_batido_platano_yogur" -> Res.drawable.recipe_batido_platano_yogur
         "recipe_eggs_scrambled" -> Res.drawable.recipe_eggs_scrambled
+        "recipe_eggs_scrambled_pavo" -> Res.drawable.recipe_eggs_scrambled_pavo
         "recipe_lentejas_arroz" -> Res.drawable.recipe_lentejas_arroz
         "recipe_pasta_carbonara" -> Res.drawable.recipe_pasta_carbonara
         "recipe_pasta_espinacas" -> Res.drawable.recipe_pasta_espinacas
         "recipe_pasta_gulas_gambas" -> Res.drawable.recipe_pasta_gulas_gambas
         "recipe_tortilla_francesa" -> Res.drawable.recipe_tortilla_francesa
+        "recipe_tortilla_francesa_queso" -> Res.drawable.recipe_tortilla_francesa_queso
         "recipe_family_arroz" -> Res.drawable.recipe_family_arroz
         "recipe_family_carne" -> Res.drawable.recipe_family_carne
         "recipe_family_ensalada" -> Res.drawable.recipe_family_ensalada
@@ -35,6 +37,7 @@ private fun fallbackRecipeDrawableResource(recipe: Recipe): DrawableResource {
     return when {
         "atun a la plancha" in joined || "atún a la plancha" in joined -> Res.drawable.recipe_atun_plancha
         "batido" in joined && ("platano" in joined || "plátano" in joined) && "yogur" in joined -> Res.drawable.recipe_batido_platano_yogur
+        "huevos revueltos con pavo" in joined -> Res.drawable.recipe_eggs_scrambled_pavo
         "huevos revueltos" in joined || "revuelto de huevos" in joined -> Res.drawable.recipe_eggs_scrambled
         "lentejas con arroz" in joined -> Res.drawable.recipe_lentejas_arroz
         "carbonara" in joined -> Res.drawable.recipe_pasta_carbonara
@@ -43,6 +46,7 @@ private fun fallbackRecipeDrawableResource(recipe: Recipe): DrawableResource {
             "pasta" in joined || "macarron" in joined || "macarrón" in joined || "espagueti" in joined ||
                 "tallarin" in joined || "tallarín" in joined
             ) -> Res.drawable.recipe_pasta_gulas_gambas
+        "tortilla francesa con queso" in joined -> Res.drawable.recipe_tortilla_francesa_queso
         "tortilla francesa" in joined -> Res.drawable.recipe_tortilla_francesa
         "huevo" in joined || "tortilla" in joined || "revuelto" in joined -> Res.drawable.recipe_family_tortilla
         "fideua" in joined || "fideuá" in joined || "pasta" in joined || "macarron" in joined ||

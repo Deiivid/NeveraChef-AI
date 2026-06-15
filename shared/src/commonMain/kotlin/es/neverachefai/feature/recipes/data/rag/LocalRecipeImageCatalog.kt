@@ -48,6 +48,7 @@ internal object LocalRecipeImageCatalog {
         return when {
             "atun a la plancha" in joined -> "recipe_atun_plancha"
             "batido" in joined && "platano" in joined && "yogur" in joined -> "recipe_batido_platano_yogur"
+            "huevos revueltos con pavo" in joined -> "recipe_eggs_scrambled_pavo"
             "huevos revueltos" in joined || "revuelto de huevos" in joined -> "recipe_eggs_scrambled"
             "lentejas con arroz" in joined -> "recipe_lentejas_arroz"
             "carbonara" in joined && ("macarron" in joined || "espagueti" in joined || "pasta" in joined) -> "recipe_pasta_carbonara"
@@ -55,6 +56,7 @@ internal object LocalRecipeImageCatalog {
             "gulas" in joined && "gambas" in joined && (
                 "pasta" in joined || "macarron" in joined || "espagueti" in joined || "tallarin" in joined
                 ) -> "recipe_pasta_gulas_gambas"
+            "tortilla francesa con queso" in joined -> "recipe_tortilla_francesa_queso"
             "tortilla francesa" in joined -> "recipe_tortilla_francesa"
             else -> null
         }
